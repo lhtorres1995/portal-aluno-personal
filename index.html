@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LT360 — Portal do Aluno</title>
+<link rel="icon" href="/logo_lt360.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- ===================== GATE (login / criar senha de convite) ===================== -->
+<div id="gate">
+  <div id="gate-loading">
+    <div class="gate-spinner"></div>
+    <div>Carregando...</div>
+  </div>
+
+  <div id="gate-auth" hidden>
+    <div class="auth-panel">
+      <div class="auth-card">
+        <img class="auth-logo" src="/logo_lt360.png" alt="LT360">
+        <div class="auth-brand-sub">Portal do Aluno</div>
+
+        <!-- login -->
+        <div id="authview-login">
+          <h2>Entrar</h2>
+          <p class="auth-subtitle">Acesse para ver seus treinos</p>
+          <div class="auth-erro" id="login-erro" hidden></div>
+          <form id="form-login" onsubmit="entrar(event)">
+            <div class="field">
+              <label for="login-email">E-mail</label>
+              <input id="login-email" type="email" required autocomplete="email" placeholder="seu@email.com">
+            </div>
+            <div class="field">
+              <label for="login-senha">Senha</label>
+              <div class="input-ic">
+                <input id="login-senha" type="password" required autocomplete="current-password" placeholder="Sua senha">
+                <button type="button" class="input-ic-eye" onclick="toggleSenha('login-senha')" aria-label="Mostrar senha">&#128065;</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary block" id="login-submit">Entrar</button>
+          </form>
+        </div>
+
+        <!-- convite: criar senha -->
+        <div id="authview-convite" hidden>
+          <h2>Bem-vindo(a)!</h2>
+          <p class="auth-subtitle">Defina uma senha para acessar seu portal</p>
+          <div class="auth-erro" id="convite-erro" hidden></div>
+          <form id="form-convite" onsubmit="definirSenhaConvite(event)">
+            <div class="field">
+              <label for="convite-senha">Senha</label>
+              <div class="input-ic">
+                <input id="convite-senha" type="password" required autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+                <button type="button" class="input-ic-eye" onclick="toggleSenha('convite-senha')" aria-label="Mostrar senha">&#128065;</button>
+              </div>
+            </div>
+            <div class="field">
+              <label for="convite-senha-confirma">Confirmar senha</label>
+              <input id="convite-senha-confirma" type="password" required autocomplete="new-password" placeholder="Repita a senha">
+            </div>
+            <button type="submit" class="btn btn-primary block" id="convite-submit">Criar senha e entrar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP (logado) ===================== -->
+<div id="app" hidden>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <img class="logo-img" src="/logo_lt360.png" alt="LT360"><div class="brand-sub">PORTAL DO ALUNO</div>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
+      <div class="sidebar-foot" id="sidebar-foot"></div>
+    </aside>
+
+    <div class="main">
+      <div class="topbanner" id="topbanner"></div>
+      <header class="topbar">
+        <div class="topbar-date" id="topbar-date"></div>
+        <div class="topbar-right">
+          <button class="icon-btn has-dot" id="btn-bell" aria-label="Notificações"></button>
+          <div class="avatar avatar-sm" id="topbar-avatar">A</div>
+        </div>
+      </header>
+      <header class="m-header" id="m-header"></header>
+      <main class="content" id="content"></main>
+    </div>
+
+    <nav class="bottomnav" id="bottomnav"></nav>
+  </div>
+</div>
+
+<!-- Modal (remarcar / cancelar) -->
+<div id="modal-overlay" class="modal-overlay" hidden onclick="fecharModalSolic(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div id="modal-conteudo"></div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
