@@ -47,21 +47,18 @@ import './styles.css';
   var dispPersonal=[]; // disponibilidade do personal: {dia, ini, fim} (dias 0-6)
   var aulas = [];              // reais: {id,data,hora,status}
   var minhasSolicitacoes = []; // reais: {id,aulaId,tipo,dataSugerida,horaSugerida,status,createdAt}
+  var minhasCobrancas = [];    // reais: {id,valor,label,status,vencimento,pagamento}
   var tabAtual = "inicio";
   var aulasTab = "proximas";   // sub-aba da tela Aulas
   var agendaSel = HOJE_STR;    // dia selecionado na Agenda
 
-  /* ---------------- MOCK (marcado; vira back-end nas próximas fases) ------ */
-  // Solicitações agora são REAIS (tabela solicitacoes). O que resta mock aqui
-  // é o Financeiro (Fase 4) e o bloco de progresso.
+  /* ---------------- MOCK (marcado) ---------------------------------------- */
+  // Solicitações e Financeiro agora são REAIS. Só resta mock o bloco de
+  // progresso (peso), que ainda não tem fonte de dados.
   var MOCK = {
-    cobrancas:[
-      { mes:"Outubro de 2026",  valor:"R$ 280,00", detalhe:"Pago em 02/10/2026", metodo:"Pix", status:"Pago" },
-      { mes:"Setembro de 2026", valor:"R$ 280,00", detalhe:"Pago em 02/09/2026", metodo:"Pix", status:"Pago" },
-      { mes:"Agosto de 2026",   valor:"R$ 280,00", detalhe:"Pago em 02/08/2026", metodo:"Pix", status:"Pago" }
-    ],
-    progresso:{ peso:"—", pesoDelta:"", aulasRealizadas:null }   // sem fonte de dados ainda
+    progresso:{ peso:"—", pesoDelta:"", aulasRealizadas:null }
   };
+  function fmtMoeda(v){ return "R$ "+Number(v||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
   var seqSolic = 1;
 
   /* =========================================================================
@@ -193,6 +190,27 @@ import './styles.css';
       dispPersonal = dres.error ? [] : (dres.data||[]).filter(function(d){return d.ativo!==false;})
         .map(function(d){ return { dia:d.dia_semana, ini:(d.hora_inicio||"").slice(0,5), fim:(d.hora_fim||"").slice(0,5) }; });
     } catch(e){ dispPersonal = []; }
+
+    // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
+    try {
+      var pres = await sb.from("pagamentos")
+        .select("id, valor, referencia, periodo_label, status, data_vencimento, data_pagamento")
+        .eq("aluno_id", meuAlunoId);
+      minhasCobrancas = pres.error ? [] : (pres.data||[]).map(rowToPagamento);
+    } catch(e){ minhasCobrancas = []; }
+  }
+  function rowToPagamento(r){
+    return { id:r.id, valor:Number(r.valor||0),
+      label:r.periodo_label||r.referencia||"Cobrança",
+      status:r.status||"pendente",
+      vencimento:r.data_vencimento||null,
+      pagamento:r.data_pagamento||null };
+  }
+  // Status efetivo de uma cobrança: pago / vencido / pendente.
+  function statusCobranca(c){
+    if(c.status==="pago") return "pago";
+    if(c.vencimento && c.vencimento < HOJE_STR) return "vencido";
+    return "pendente";
   }
   function rowToSolic(r){
     return { id:r.id, aulaId:r.aula_id, tipo:r.tipo,
@@ -596,18 +614,60 @@ import './styles.css';
   };
 
   /* =========================================================================
-     TELA: Financeiro (mock cobranças; PIX real)
+     TELA: Financeiro (cobranças REAIS; PIX real)
      ========================================================================= */
+  function badgeCobranca(st){
+    if(st==="pago")    return '<span class="badge badge-ok">Pago</span>';
+    if(st==="vencido") return '<span class="badge badge-dang">Vencido</span>';
+    return '<span class="badge badge-warn">Pendente</span>';
+  }
+  function detalheCobranca(c, st){
+    if(st==="pago")    return (c.pagamento?("Pago em "+fmtDataBR(c.pagamento)):"Pago");
+    if(st==="vencido") return (c.vencimento?("Venceu em "+fmtDataBR(c.vencimento)):"Em atraso");
+    return (c.vencimento?("Vence em "+fmtDataBR(c.vencimento)):"Em aberto");
+  }
   function screenFinanceiro(){
     var tabs='<div class="seg"><button class="seg-b active">Cobranças</button><button class="seg-b" onclick="toast(\'Histórico: em breve\')">Histórico</button></div>';
-    var banner='<div class="fin-banner"><span class="fin-banner-ic">'+IC.check+'</span><div><div class="fin-banner-t">Sua mensalidade está em dia!</div><div class="fin-banner-s">Próximo vencimento em 05/11/2026</div></div></div>';
-    var cobr=MOCK.cobrancas.map(function(c){
-      return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+c.mes+'</div><div class="cobr-val">'+c.valor+'</div>'+
-        '<div class="cobr-det"><span class="cobr-dot green"></span>'+c.detalhe+'</div>'+
-        '<div class="cobr-pix"><span class="cobr-pix-ic">'+IC.pix+'</span>'+c.metodo+'</div></div>'+
-        '<div class="cobr-dir">'+statusBadge(c.status)+'<span class="chev">'+IC.chevR+'</span></div></div>';
-    }).join("");
-    return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+banner+cobr;
+
+    // Situação: vencidas, próxima em aberto (futura mais próxima).
+    var vencidas = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="vencido"; });
+    var emAberto = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="pendente" && c.vencimento; })
+                                  .sort(function(a,b){ return a.vencimento<b.vencimento?-1:1; });
+    var banner;
+    if(vencidas.length){
+      banner='<div class="fin-banner fin-banner-alerta"><span class="fin-banner-ic">'+IC.bell+'</span><div>'+
+        '<div class="fin-banner-t">Você tem '+vencidas.length+' cobrança'+(vencidas.length>1?'s':'')+' em atraso</div>'+
+        '<div class="fin-banner-s">Regularize com seu personal pelo PIX abaixo</div></div></div>';
+    } else if(emAberto.length){
+      banner='<div class="fin-banner"><span class="fin-banner-ic">'+IC.check+'</span><div>'+
+        '<div class="fin-banner-t">Sua mensalidade está em dia!</div>'+
+        '<div class="fin-banner-s">Próximo vencimento em '+fmtDataBR(emAberto[0].vencimento)+'</div></div></div>';
+    } else {
+      banner='<div class="fin-banner"><span class="fin-banner-ic">'+IC.check+'</span><div>'+
+        '<div class="fin-banner-t">Nenhuma cobrança em aberto</div>'+
+        '<div class="fin-banner-s">Você não tem pagamentos pendentes no momento</div></div></div>';
+    }
+
+    var ordenadas = minhasCobrancas.slice().sort(function(a,b){
+      return (b.vencimento||"")<(a.vencimento||"")?-1:1;  // mais recentes primeiro
+    });
+    var cobr;
+    if(!ordenadas.length){
+      cobr='<div class="lista-vazia">Nenhuma cobrança registrada ainda.</div>';
+    } else {
+      cobr=ordenadas.map(function(c){
+        var st=statusCobranca(c);
+        var dot = st==="pago" ? "green" : (st==="vencido" ? "red" : "amber");
+        return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+c.label+'</div>'+
+          '<div class="cobr-val">'+fmtMoeda(c.valor)+'</div>'+
+          '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div></div>'+
+          '<div class="cobr-dir">'+badgeCobranca(st)+'</div></div>';
+      }).join("");
+    }
+    var pix='<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
+      '<div class="fin-pix-val">'+pixPersonal+'</div></div>';
+
+    return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+banner+cobr+pix;
   }
 
   /* =========================================================================
