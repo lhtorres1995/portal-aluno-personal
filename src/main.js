@@ -170,12 +170,12 @@ import './styles.css';
     meuEmail=(sess.data.session&&sess.data.session.user&&sess.data.session.user.email)||"";
 
     var res=await Promise.all([
-      sb.from("aulas").select("id, data, hora, status").eq("aluno_id", meuAlunoId),
+      sb.from("aulas").select("id, data, hora, status, checkin_em, checkin_origem").eq("aluno_id", meuAlunoId),
       sb.from("profiles").select("nome, logo_url, pix, telefone").eq("id", meuProfessorId).maybeSingle()
     ]);
     if(res[0].error) throw res[0].error;
     if(res[1].error) throw res[1].error;
-    aulas=(res[0].data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status}; });
+    aulas=(res[0].data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status,checkinEm:r.checkin_em||null,checkinOrigem:r.checkin_origem||null}; });
     var prof=res[1].data||{};
     nomePersonal=prof.nome||"Seu personal"; logoPersonal=prof.logo_url||null;
     pixPersonal=prof.pix||"(chave PIX não cadastrada)"; telefonePersonal=prof.telefone||"";
@@ -267,7 +267,11 @@ import './styles.css';
   function enriquecer(a){
     return { id:a.id, data:a.data, hora:a.hora, status:a.status,
       titulo:labelTipo(meuTreinoTipo), sub:"Com "+nomePersonal, local:meuTreinoLocal, tipo:meuTreinoTipo,
-      statusLabel:labelStatusAula(a.status) };
+      statusLabel:labelStatusAula(a.status), checkinEm:a.checkinEm, checkinOrigem:a.checkinOrigem };
+  }
+  function horaCheckin(iso){
+    try{ return new Date(iso).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"}); }
+    catch(e){ return ""; }
   }
 
   function segundaDaSemana(d){
@@ -343,7 +347,32 @@ import './styles.css';
   /* =========================================================================
      Shell (sidebar, bottom nav, header mobile)
      ========================================================================= */
+  /* ---------------- Notificações (sino) ---------------------------------- */
+  function listaNotificacoes(){
+    var ns=[];
+    var venc = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="vencido"; });
+    if(venc.length){ ns.push({ ic:"box", cor:"red", titulo: venc.length+" cobrança"+(venc.length>1?"s":"")+" vencida"+(venc.length>1?"s":""), sub:"Toque para ver no Financeiro.", tab:"financeiro" }); }
+    var contra = minhasSolicitacoes.filter(function(s){ return s.status==="contraproposta"; });
+    if(contra.length){ ns.push({ ic:"agenda", cor:"amber", titulo:"Seu personal sugeriu um novo horário", sub:"Responda em Solicitações.", tab:"solicitacoes" }); }
+    return ns;
+  }
+  function aplicarSino(btn){
+    if(!btn) return;
+    btn.innerHTML = IC.bell;
+    if(listaNotificacoes().length) btn.classList.add("has-dot"); else btn.classList.remove("has-dot");
+    btn.onclick = window.abrirNotificacoes;
+  }
+  window.abrirNotificacoes = function(){
+    var ns = listaNotificacoes();
+    var corpo = ns.length
+      ? ns.map(function(x){ return '<button class="notif-row" onclick="irDeNotif(\''+x.tab+'\')"><span class="notif-ic '+x.cor+'">'+IC[x.ic]+'</span><div class="notif-txt"><div class="notif-t">'+x.titulo+'</div><div class="notif-s">'+x.sub+'</div></div><span class="chev">'+IC.chevR+'</span></button>'; }).join("")
+      : '<div class="notif-vazio"><span class="notif-vazio-ic">'+IC.check+'</span>Tudo em dia! Sem novidades por aqui.</div>';
+    abrirModal('<div class="notif-modal"><div class="modal-tit">Notificações</div><div class="notif-lista">'+corpo+'</div><div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div></div>');
+  };
+  window.irDeNotif = function(tab){ document.getElementById("modal-overlay").hidden=true; ir(tab); };
+
   function renderShell(){
+    aplicarSino(document.getElementById("btn-bell"));
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){
       return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
     }).join("");
@@ -363,7 +392,7 @@ import './styles.css';
     if(tabAtual==="inicio"){
       el.className="m-header m-header-inicio";
       el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
-        '<div class="m-header-right"><button class="icon-btn has-dot">'+IC.bell+'</button>'+
+        '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
         '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+iniciais(meuNome)+'</div></div>';
     } else {
       el.className="m-header m-header-titulo";
@@ -381,10 +410,13 @@ import './styles.css';
   }
   function tileTreino(tipo){ var t=TIPO[tipo]||TIPO.forca; return '<span class="treino-tile '+t.tile+'">'+IC[t.ic]+'</span>'; }
   function cardAula(a, comLocal){
+    var selo = (a.checkinOrigem==="checkout")
+      ? '<div class="aula-item-checkout">'+IC.check+' Concluída via check-out'+(a.checkinEm?' · '+horaCheckin(a.checkinEm):'')+'</div>'
+      : '';
     return '<div class="aula-item">'+tileTreino(a.tipo)+
       '<div class="aula-item-info"><div class="aula-item-hora">'+a.hora+'</div>'+
       '<div class="aula-item-tit">'+a.titulo+'</div><div class="aula-item-sub">'+a.sub+'</div>'+
-      (comLocal&&a.local?'<div class="aula-item-local">'+IC.pin+a.local+'</div>':'')+'</div>'+
+      (comLocal&&a.local?'<div class="aula-item-local">'+IC.pin+a.local+'</div>':'')+selo+'</div>'+
       '<div class="aula-item-dir">'+statusBadge(a.statusLabel)+'<span class="chev">'+IC.chevR+'</span></div></div>';
   }
 
@@ -433,7 +465,7 @@ import './styles.css';
       '<div class="prog-col"><div class="prog-cap">Aulas realizadas '+IC.chevR+'</div><div class="prog-val">'+(aulas.filter(function(a){return a.status==="concluida";}).length)+'</div><div class="prog-foot">no total</div></div></div></div>';
 
     var heroBtn = meuCheckinToken
-      ? '<button class="btn btn-checkin" onclick="abrirCheckin()">'+IC.box+' Fazer check-in</button>'
+      ? '<button class="btn btn-checkin" onclick="abrirCheckin()">'+IC.box+' Meu check-out</button>'
       : '';
     return '<div class="hero"><div class="hero-txt"><h1>Olá, '+(meuNome.split(" ")[0]||"aluno")+'!</h1><p>Vamos em busca de mais resultados! 💪</p></div>'+heroBtn+'</div>'+
       '<div class="grid-prox">'+proxima+semana+'</div>'+stats+'<div class="grid-2">'+atividades+progresso+'</div>';
@@ -445,8 +477,8 @@ import './styles.css';
       svg = await QRCode.toString("LT360CHECKIN:"+meuCheckinToken, { type:"svg", margin:1, errorCorrectionLevel:"M" });
     }catch(e){ console.error(e); toast("Não foi possível gerar o QR."); return; }
     var html='<div class="checkin-modal">'+
-      '<div class="modal-tit">Meu check-in</div>'+
-      '<div class="modal-sub">Mostre este QR ao seu personal para confirmar sua presença na aula de hoje.</div>'+
+      '<div class="modal-tit">Meu check-out</div>'+
+      '<div class="modal-sub">Mostre este QR ao seu personal para finalizar a aula de hoje.</div>'+
       '<div class="qr-panel">'+svg+'</div>'+
       '<div class="qr-nome">'+meuNome+'</div>'+
       '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div>'+
@@ -459,7 +491,7 @@ import './styles.css';
      ========================================================================= */
   function listaAulasPorTab(){
     var arr;
-    if(aulasTab==="realizadas") arr=aulas.filter(function(a){ return a.status==="concluida" || ((a.status==="agendada"||a.status==="confirmada")&&aulaPassou(a)); }).sort(ordDesc);
+    if(aulasTab==="realizadas") arr=aulas.filter(function(a){ return a.status==="concluida"; }).sort(ordDesc);
     else if(aulasTab==="canceladas") arr=aulas.filter(function(a){ return a.status==="cancelada"; }).sort(ordDesc);
     else arr=proximasAulas();
     return arr.map(enriquecer);
@@ -632,8 +664,8 @@ import './styles.css';
   };
   async function recarregarAposResposta(){
     try{
-      var au = await sb.from("aulas").select("id, data, hora, status").eq("aluno_id", meuAlunoId);
-      if(!au.error) aulas = (au.data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status}; });
+      var au = await sb.from("aulas").select("id, data, hora, status, checkin_em, checkin_origem").eq("aluno_id", meuAlunoId);
+      if(!au.error) aulas = (au.data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status,checkinEm:r.checkin_em||null,checkinOrigem:r.checkin_origem||null}; });
       var sr = await sb.from("solicitacoes").select("id, aula_id, tipo, data_sugerida, hora_sugerida, contra_data, contra_hora, status, created_at, resposta").eq("aluno_id", meuAlunoId);
       if(!sr.error) minhasSolicitacoes = (sr.data||[]).map(rowToSolic);
     }catch(e){ console.error(e); }
@@ -706,6 +738,30 @@ import './styles.css';
     return (c.vencimento?("Vence em "+fmtDataBR(c.vencimento)):"Em aberto");
   }
   window.setFinTab = function(t){ finTab=t; ir("financeiro"); };
+  window.abrirPagamento = function(id){
+    var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
+    if(!c) return;
+    var chave = pixPersonal || "(chave PIX não cadastrada)";
+    var html='<div class="pag-modal">'+
+      '<div class="modal-tit">Pagamento via Pix</div>'+
+      '<div class="modal-sub">'+c.label+'</div>'+
+      '<div class="pag-valor">'+fmtMoeda(c.valor)+'</div>'+
+      '<div class="pag-pix"><div class="pag-pix-cap">Chave Pix do seu personal</div>'+
+        '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-pix-key">'+chave+'</span>'+
+        '<button class="btn btn-dark pag-copy" onclick="copiarPix()">Copiar</button></div></div>'+
+      '<div class="pag-hint">Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima. Depois é só avisar seu personal.</div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div></div>';
+    abrirModal(html);
+  };
+  window.copiarPix = function(){
+    var el=document.getElementById("pag-pix-key"); var txt=el?el.textContent:"";
+    function ok(){ toast("Chave Pix copiada!"); }
+    function fallback(t){ try{ var ta=document.createElement("textarea"); ta.value=t; ta.setAttribute("readonly",""); ta.style.position="absolute"; ta.style.left="-9999px"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); ok(); }catch(e){ toast("Não consegui copiar. Copie manualmente."); } }
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok, function(){ fallback(txt); }); }
+      else fallback(txt);
+    }catch(e){ fallback(txt); }
+  };
   function screenFinanceiro(){
     var tabs='<div class="seg">'+
       '<button class="seg-b'+(finTab==="cobrancas"?" active":"")+'" onclick="setFinTab(\'cobrancas\')">Cobranças</button>'+
@@ -747,10 +803,11 @@ import './styles.css';
       cobr=ordenadas.map(function(c){
         var st=statusCobranca(c);
         var dot = st==="pago" ? "green" : (st==="vencido" ? "red" : "amber");
+        var acao = st!=="pago" ? '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>' : '';
         return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+c.label+'</div>'+
           '<div class="cobr-val">'+fmtMoeda(c.valor)+'</div>'+
           '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div></div>'+
-          '<div class="cobr-dir">'+badgeCobranca(st)+'</div></div>';
+          '<div class="cobr-dir">'+badgeCobranca(st)+acao+'</div></div>';
       }).join("");
     }
     var pix='<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
