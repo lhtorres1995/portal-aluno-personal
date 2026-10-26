@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import QRCode from 'qrcode';
 import './styles.css';
 
 /* ==========================================================================
@@ -42,7 +43,7 @@ import './styles.css';
 
   /* ---------------- Estado (dados reais) ---------------------------------- */
   var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="";
-  var meuTreinoTipo="forca", meuTreinoLocal="";
+  var meuTreinoTipo="forca", meuTreinoLocal="", meuCheckinToken="";
   var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
   var dispPersonal=[]; // disponibilidade do personal: {dia, ini, fim} (dias 0-6)
   var aulas = [];              // reais: {id,data,hora,status}
@@ -194,6 +195,12 @@ import './styles.css';
       dispPersonal = dres.error ? [] : (dres.data||[]).filter(function(d){return d.ativo!==false;})
         .map(function(d){ return { dia:d.dia_semana, ini:(d.hora_inicio||"").slice(0,5), fim:(d.hora_fim||"").slice(0,5) }; });
     } catch(e){ dispPersonal = []; }
+
+    // Token de check-in (tolerante: só existe após a migração da Fase 5).
+    try {
+      var tkRes = await sb.from("alunos").select("checkin_token").eq("id", meuAlunoId).maybeSingle();
+      meuCheckinToken = (tkRes.error || !tkRes.data) ? "" : (tkRes.data.checkin_token||"");
+    } catch(e){ meuCheckinToken = ""; }
 
     // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
     try {
@@ -425,9 +432,27 @@ import './styles.css';
         '<div class="prog-foot">registre no app (em breve)</div></div>'+
       '<div class="prog-col"><div class="prog-cap">Aulas realizadas '+IC.chevR+'</div><div class="prog-val">'+(aulas.filter(function(a){return a.status==="concluida";}).length)+'</div><div class="prog-foot">no total</div></div></div></div>';
 
-    return '<div class="hero"><div class="hero-txt"><h1>Olá, '+(meuNome.split(" ")[0]||"aluno")+'!</h1><p>Vamos em busca de mais resultados! 💪</p></div></div>'+
+    var heroBtn = meuCheckinToken
+      ? '<button class="btn btn-checkin" onclick="abrirCheckin()">'+IC.box+' Fazer check-in</button>'
+      : '';
+    return '<div class="hero"><div class="hero-txt"><h1>Olá, '+(meuNome.split(" ")[0]||"aluno")+'!</h1><p>Vamos em busca de mais resultados! 💪</p></div>'+heroBtn+'</div>'+
       '<div class="grid-prox">'+proxima+semana+'</div>'+stats+'<div class="grid-2">'+atividades+progresso+'</div>';
   }
+  window.abrirCheckin = async function(){
+    if(!meuCheckinToken){ toast("Check-in indisponível. Atualize o app ou fale com seu personal."); return; }
+    var svg;
+    try{
+      svg = await QRCode.toString("LT360CHECKIN:"+meuCheckinToken, { type:"svg", margin:1, errorCorrectionLevel:"M" });
+    }catch(e){ console.error(e); toast("Não foi possível gerar o QR."); return; }
+    var html='<div class="checkin-modal">'+
+      '<div class="modal-tit">Meu check-in</div>'+
+      '<div class="modal-sub">Mostre este QR ao seu personal para confirmar sua presença na aula de hoje.</div>'+
+      '<div class="qr-panel">'+svg+'</div>'+
+      '<div class="qr-nome">'+meuNome+'</div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div>'+
+      '</div>';
+    abrirModal(html);
+  };
 
   /* =========================================================================
      TELA: Aulas (próximas / realizadas / canceladas) — real

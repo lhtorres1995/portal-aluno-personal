@@ -103,9 +103,20 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .bottomnav{display:none;}
 
 /* ===================== HERO (Início) ===================== */
-.hero{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:18px;padding:6px 2px 14px;}
+.hero{position:relative;border-radius:var(--radius);overflow:hidden;margin-bottom:18px;padding:6px 2px 14px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .hero h1{font-size:34px;font-weight:800;letter-spacing:-.5px;}
 .hero p{color:var(--muted);font-size:16px;margin:6px 0 0;}
+.btn-checkin{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#042523;font-weight:800;
+  padding:13px 20px;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;}
+.btn-checkin svg{width:18px;height:18px;}
+@media (max-width:600px){ .btn-checkin{width:100%;justify-content:center;} }
+/* Modal de check-in (QR) */
+.checkin-modal{text-align:center;}
+.checkin-modal .modal-sub{margin-bottom:18px;}
+.qr-panel{background:#fff;border-radius:16px;padding:16px;width:232px;max-width:72vw;margin:0 auto 12px;}
+.qr-panel svg{display:block;width:100%;height:auto;}
+.qr-nome{font-family:var(--fdisp);font-weight:700;font-size:16px;margin-bottom:16px;}
 
 /* ===================== Cards base ===================== */
 .card{background:var(--card);border:1px solid var(--card-line);border-radius:var(--radius);padding:18px;}
