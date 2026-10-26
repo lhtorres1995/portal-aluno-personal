@@ -15,6 +15,13 @@ import './styles.css';
 (function(){
   "use strict";
 
+  // PWA: registra o service worker (instalável + offline básico).
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("/sw.js").catch(function(e){ console.warn("SW não registrado:", e); });
+    });
+  }
+
   var DIAS = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
   var MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
