@@ -211,9 +211,11 @@ import './styles.css';
 
     // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
     try {
-      var pres = await sb.from("pagamentos")
-        .select("id, valor, referencia, periodo_label, status, data_vencimento, data_pagamento")
-        .eq("aluno_id", meuAlunoId);
+      var baseCols = "id, valor, referencia, periodo_label, status, data_vencimento, data_pagamento";
+      var pres = await sb.from("pagamentos").select(baseCols+", pago_informado_em").eq("aluno_id", meuAlunoId);
+      if(pres.error){ // coluna pode não existir antes da migração 0014
+        pres = await sb.from("pagamentos").select(baseCols).eq("aluno_id", meuAlunoId);
+      }
       minhasCobrancas = pres.error ? [] : (pres.data||[]).map(rowToPagamento);
     } catch(e){ minhasCobrancas = []; }
   }
@@ -222,7 +224,8 @@ import './styles.css';
       label:r.periodo_label||r.referencia||"Cobrança",
       status:r.status||"pendente",
       vencimento:r.data_vencimento||null,
-      pagamento:r.data_pagamento||null };
+      pagamento:r.data_pagamento||null,
+      pagoInformado: !!r.pago_informado_em };
   }
   // Status efetivo de uma cobrança: pago / vencido / pendente.
   function statusCobranca(c){
@@ -806,10 +809,51 @@ import './styles.css';
       '<div class="pag-pix"><div class="pag-pix-cap">'+(brcode?'Ou pague pela chave':'Chave Pix do seu personal')+'</div>'+
         '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-pix-key">'+chave+'</span>'+
         '<button class="btn btn-dark pag-copy" onclick="copiarTexto(\'pag-pix-key\')">Copiar</button></div></div>'+
-      '<div class="pag-hint">'+(brcode?'Escaneie o QR ou cole o código no app do seu banco (o valor já vai preenchido).':'Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima.')+' Depois é só avisar seu personal.</div>'+
+      '<div class="pag-hint">'+(brcode?'Escaneie o QR ou cole o código no app do seu banco (o valor já vai preenchido).':'Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima.')+'</div>'+
+      (c.pagoInformado
+        ? '<div class="pag-informado">'+IC.check+' Você já avisou este pagamento. Aguarde a confirmação do seu personal.</div>'
+        : '<button class="btn btn-primary block" onclick="informarPagamento(\''+c.id+'\')">'+IC.check+' Já fiz o pagamento</button>')+
       '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div></div>';
     abrirModal(html);
   };
+  window.informarPagamento = async function(id){
+    try{
+      var r = await sb.rpc("informar_pagamento", { p_pagamento_id:id });
+      if(r.error){ toast("Não foi possível avisar: "+(r.error.message||"erro")); return; }
+      minhasCobrancas.forEach(function(x){ if(x.id===id) x.pagoInformado=true; });
+      document.getElementById("modal-overlay").hidden=true;
+      toast("Avisamos seu personal! Ele vai confirmar o recebimento.");
+      if(tabAtual==="financeiro") ir("financeiro");
+      aplicarSino(document.getElementById("btn-bell"));
+    }catch(e){ console.error(e); toast("Falha ao avisar o pagamento."); }
+  };
+  window.abrirComprovante = function(id){
+    var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
+    if(!c) return;
+    var html='<div class="comprovante">'+
+      '<div class="modal-tit">Comprovante</div>'+
+      '<div class="comp-card"><div class="comp-top"><span class="comp-ok">'+IC.check+'</span>'+
+        '<div><div class="comp-status">Pagamento confirmado</div><div class="comp-ref">'+c.label+'</div></div></div>'+
+        '<div class="comp-linha"><span>Valor</span><b>'+fmtMoeda(c.valor)+'</b></div>'+
+        '<div class="comp-linha"><span>Aluno</span><b>'+meuNome+'</b></div>'+
+        '<div class="comp-linha"><span>Personal</span><b>'+nomePersonal+'</b></div>'+
+        (c.pagamento?'<div class="comp-linha"><span>Pago em</span><b>'+fmtDataBR(c.pagamento)+'</b></div>':'')+
+      '</div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark" onclick="fecharModalSolic()">Fechar</button>'+
+        '<button class="btn btn-primary" onclick="compartilharComprovante(\''+c.id+'\')">Compartilhar</button></div></div>';
+    abrirModal(html);
+  };
+  window.compartilharComprovante = function(id){
+    var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
+    if(!c) return;
+    var txt="Comprovante LT360\n"+c.label+"\nValor: "+fmtMoeda(c.valor)+"\nAluno: "+meuNome+"\nPersonal: "+nomePersonal+(c.pagamento?"\nPago em: "+fmtDataBR(c.pagamento):"");
+    if(navigator.share){ navigator.share({ title:"Comprovante LT360", text:txt }).catch(function(){}); }
+    else { copiarTextoBruto(txt); }
+  };
+  function copiarTextoBruto(t){
+    function ok(){ toast("Comprovante copiado!"); }
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(ok,function(){ok();}); } else { var ta=document.createElement("textarea"); ta.value=t; ta.style.position="absolute"; ta.style.left="-9999px"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); ok(); } }catch(e){ toast("Copie manualmente."); }
+  }
   window.copiarTexto = function(elId){
     var el=document.getElementById(elId); var txt=el?el.textContent:"";
     function ok(){ toast("Copiado!"); }
@@ -858,10 +902,13 @@ import './styles.css';
       cobr=ordenadas.map(function(c){
         var st=statusCobranca(c);
         var dot = st==="pago" ? "green" : (st==="vencido" ? "red" : "amber");
-        var acao = st!=="pago" ? '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>' : '';
+        var seloInf = (c.pagoInformado && st!=="pago") ? '<div class="cobr-inf">'+IC.clock+' Pagamento informado · aguardando confirmação</div>' : '';
+        var acao = st==="pago"
+          ? '<button class="btn btn-dark btn-pagar" onclick="abrirComprovante(\''+c.id+'\')">Comprovante</button>'
+          : '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>';
         return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+c.label+'</div>'+
           '<div class="cobr-val">'+fmtMoeda(c.valor)+'</div>'+
-          '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div></div>'+
+          '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div>'+seloInf+'</div>'+
           '<div class="cobr-dir">'+badgeCobranca(st)+acao+'</div></div>';
       }).join("");
     }
