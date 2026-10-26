@@ -51,6 +51,10 @@ import './styles.css';
   var tabAtual = "inicio";
   var aulasTab = "proximas";   // sub-aba da tela Aulas
   var agendaSel = HOJE_STR;    // dia selecionado na Agenda
+  var agendaAno = HOJE.getFullYear(), agendaMes = HOJE.getMonth(); // mês exibido na Agenda
+  var agendaView = "mes";      // mes | semana | lista
+  var solicTab = "todas";      // todas | em_analise | aprovada | negada
+  var finTab = "cobrancas";    // cobrancas | historico
 
   /* ---------------- MOCK (marcado) ---------------------------------------- */
   // Solicitações e Financeiro agora são REAIS. Só resta mock o bloco de
@@ -458,34 +462,76 @@ import './styles.css';
     var set={}; aulas.forEach(function(a){ if(a.data.slice(0,7)===mesPrefix && ativa(a)) set[parseInt(a.data.slice(8),10)]=true; }); return set;
   }
   window.selecionarDiaAgenda = function(ds){ agendaSel=ds; ir("agenda"); };
-  function screenAgenda(){
-    var ano=HOJE.getFullYear(), mes=HOJE.getMonth();
-    var mesPrefix = ano+"-"+doisDig(mes+1);
-    var primeiro = new Date(ano,mes,1).getDay();
-    var diasNoMes = new Date(ano,mes+1,0).getDate();
-    var dots=diasComAula(mesPrefix);
-    var cells=[]; for(var i=0;i<primeiro;i++) cells.push(null); for(var d=1;d<=diasNoMes;d++) cells.push(d);
-    while(cells.length%7) cells.push(null);
-    var wk=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
-    var cal='<div class="cal-nav"><button class="cal-arrow" onclick="toast(\'Navegação de mês: em breve\')">'+IC.chevL+'</button>'+
-      '<span class="cal-mes">'+capitalizar(MESES[mes])+' de '+ano+'</span>'+
-      '<button class="cal-arrow" onclick="toast(\'Navegação de mês: em breve\')">'+IC.chevR+'</button></div>'+
-      '<div class="cal-head">'+wk.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div>'+
-      '<div class="cal-grid">'+cells.map(function(d){
-        if(d===null) return '<span class="cal-cell empty"></span>';
-        var ds=mesPrefix+"-"+doisDig(d); var sel=ds===agendaSel; var dot=dots[d];
-        return '<span class="cal-cell'+(sel?' sel':'')+'" onclick="selecionarDiaAgenda(\''+ds+'\')"><span class="cal-n">'+d+'</span>'+(dot?'<span class="cal-dot teal"></span>':'')+'</span>';
-      }).join("")+'</div>';
-
-    var doDia = aulas.filter(function(a){ return a.data===agendaSel && ativa(a); }).sort(ordAsc).map(enriquecer);
-    var detalhe='<div class="card agenda-det"><div class="agenda-det-dia">'+capitalizar(diaSemanaLabel(agendaSel))+', '+fmtDataBR(agendaSel)+'</div>'+
+  window.setAgendaView = function(v){ agendaView=v; ir("agenda"); };
+  window.agendaNav = function(dir){
+    if(agendaView==="semana"){ agendaSel = addDias(agendaSel, dir*7); }
+    else { var d=new Date(agendaAno, agendaMes+dir, 1); agendaAno=d.getFullYear(); agendaMes=d.getMonth(); }
+    ir("agenda");
+  };
+  function addDias(ds, n){ var p=ds.split("-"); var d=new Date(+p[0], +p[1]-1, +p[2]); d.setDate(d.getDate()+n); return dataLocalStr(d); }
+  function aulasDoDia(ds){ return aulas.filter(function(a){ return a.data===ds && ativa(a); }).sort(ordAsc).map(enriquecer); }
+  function blocoDetalheDia(ds){
+    var doDia = aulasDoDia(ds);
+    return '<div class="agenda-det-dia">'+capitalizar(diaSemanaLabel(ds))+', '+fmtDataBR(ds)+'</div>'+
       (doDia.length ? doDia.map(function(it){ return '<div class="agenda-det-item"><div class="agenda-det-hora"><span class="dot-teal"></span>'+it.hora+'</div>'+cardAula(it,true)+'</div>'; }).join("")
-        : '<div class="lista-vazia" style="padding:12px 2px">Nenhuma aula neste dia.</div>')+'</div>';
+        : '<div class="lista-vazia" style="padding:12px 2px">Nenhuma aula neste dia.</div>');
+  }
+  function calLabel(){
+    if(agendaView==="semana"){
+      var ini=addDias(agendaSel, -(new Date(agendaSel.split("-")[0],agendaSel.split("-")[1]-1,agendaSel.split("-")[2]).getDay()));
+      var fim=addDias(ini,6);
+      return fmtDataBR(ini).slice(0,5)+" – "+fmtDataBR(fim).slice(0,5);
+    }
+    return capitalizar(MESES[agendaMes])+' de '+agendaAno;
+  }
+  function screenAgenda(){
+    var nav='<div class="cal-nav"><button class="cal-arrow" onclick="agendaNav(-1)">'+IC.chevL+'</button>'+
+      '<span class="cal-mes">'+calLabel()+'</span>'+
+      '<button class="cal-arrow" onclick="agendaNav(1)">'+IC.chevR+'</button></div>';
 
+    var corpo;
+    if(agendaView==="lista"){
+      var mesPrefixL = agendaAno+"-"+doisDig(agendaMes+1);
+      var doMes = aulas.filter(function(a){ return a.data.slice(0,7)===mesPrefixL && ativa(a); }).sort(ordAsc).map(enriquecer);
+      var porDia={}, ordem=[];
+      doMes.forEach(function(a){ if(!porDia[a.data]){ porDia[a.data]=[]; ordem.push(a.data); } porDia[a.data].push(a); });
+      corpo = ordem.length ? ordem.map(function(ds){
+        return '<div class="aulas-grupo"><div class="grupo-dia">'+capitalizar(diaSemanaLabel(ds))+', '+fmtDataBR(ds)+'</div>'+porDia[ds].map(function(a){return cardAula(a,true);}).join("")+'</div>';
+      }).join("") : '<div class="lista-vazia">Nenhuma aula neste mês.</div>';
+      corpo = '<div class="card agenda-det">'+nav+corpo+'</div>';
+    } else if(agendaView==="semana"){
+      var p=agendaSel.split("-"); var inicioSemana=addDias(agendaSel, -(new Date(+p[0],+p[1]-1,+p[2]).getDay()));
+      var dias=[]; for(var k=0;k<7;k++) dias.push(addDias(inicioSemana,k));
+      var blocos=dias.map(function(ds){
+        var aa=aulasDoDia(ds);
+        return '<div class="sem-dia'+(ds===HOJE_STR?' hoje':'')+'"><div class="grupo-dia">'+capitalizar(diaSemanaLabel(ds)).slice(0,3)+', '+fmtDataBR(ds).slice(0,5)+'</div>'+
+          (aa.length ? aa.map(function(a){return cardAula(a,true);}).join("") : '<div class="sem-vazio">—</div>')+'</div>';
+      }).join("");
+      corpo='<div class="card agenda-det">'+nav+blocos+'</div>';
+    } else {
+      // Mês (calendário + detalhe do dia)
+      var mesPrefix = agendaAno+"-"+doisDig(agendaMes+1);
+      var primeiro = new Date(agendaAno,agendaMes,1).getDay();
+      var diasNoMes = new Date(agendaAno,agendaMes+1,0).getDate();
+      var dots=diasComAula(mesPrefix);
+      var cells=[]; for(var i=0;i<primeiro;i++) cells.push(null); for(var d=1;d<=diasNoMes;d++) cells.push(d);
+      while(cells.length%7) cells.push(null);
+      var wk=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      var cal=nav+'<div class="cal-head">'+wk.map(function(w){return '<span>'+w+'</span>';}).join("")+'</div>'+
+        '<div class="cal-grid">'+cells.map(function(d){
+          if(d===null) return '<span class="cal-cell empty"></span>';
+          var ds=mesPrefix+"-"+doisDig(d); var sel=ds===agendaSel; var dot=dots[d];
+          return '<span class="cal-cell'+(sel?' sel':'')+'" onclick="selecionarDiaAgenda(\''+ds+'\')"><span class="cal-n">'+d+'</span>'+(dot?'<span class="cal-dot teal"></span>':'')+'</span>';
+        }).join("")+'</div>';
+      corpo='<div class="agenda-cal card">'+cal+'</div><div class="agenda-lado-det card agenda-det">'+blocoDetalheDia(agendaSel)+'</div>';
+    }
+
+    function segAg(id,rot){ return '<button class="seg-b'+(agendaView===id?" active":"")+'" onclick="setAgendaView(\''+id+'\')">'+rot+'</button>'; }
+    var seg='<div class="seg seg-agenda">'+segAg("mes","Mês")+segAg("semana","Semana")+segAg("lista","Lista")+'</div>';
+
+    var wrapCls = agendaView==="mes" ? "agenda-wrap" : "agenda-wrap ag-full";
     return '<div class="only-desktop pg-head"><h1>Agenda</h1><p class="pg-sub">Visualize todas as suas aulas e compromissos.</p></div>'+
-      '<div class="agenda-wrap"><div class="agenda-cal card">'+cal+'</div><div class="agenda-lado">'+
-      '<div class="seg seg-agenda only-desktop"><button class="seg-b active">Mês</button><button class="seg-b" onclick="toast(\'Semana: em breve\')">Semana</button><button class="seg-b" onclick="toast(\'Lista: em breve\')">Lista</button></div>'+
-      detalhe+'</div></div>';
+      seg+'<div class="'+wrapCls+'">'+corpo+'</div>';
   }
 
   /* =========================================================================
@@ -533,15 +579,23 @@ import './styles.css';
     }
     return '<div class="solic-wrap">'+topo+extra+'</div>';
   }
+  window.setSolicTab = function(t){ solicTab=t; ir("solicitacoes"); };
+  function solicNaTab(s){
+    if(solicTab==="todas") return true;
+    if(solicTab==="em_analise") return s.status==="em_analise" || s.status==="contraproposta";
+    return s.status===solicTab; // aprovada | negada
+  }
+  function segSolic(id,rot){ return '<button class="seg-b'+(solicTab===id?" active":"")+'" onclick="setSolicTab(\''+id+'\')">'+rot+'</button>'; }
   function screenSolic(){
-    var tabs='<div class="seg seg-wrap"><button class="seg-b active">Todas</button>'+
-      '<button class="seg-b" onclick="toast(\'Filtro: em breve\')">Em análise</button>'+
-      '<button class="seg-b" onclick="toast(\'Filtro: em breve\')">Aprovadas</button>'+
-      '<button class="seg-b" onclick="toast(\'Filtro: em breve\')">Negadas</button></div>';
+    var tabs='<div class="seg seg-wrap">'+segSolic("todas","Todas")+segSolic("em_analise","Em análise")+
+      segSolic("aprovada","Aprovadas")+segSolic("negada","Negadas")+'</div>';
     var nova='<button class="btn btn-primary btn-nova" onclick="toast(\'Para pedir remarcação ou cancelamento, use os botões na aba Aulas.\')">'+IC.plus+' Nova solicitação</button>';
-    var ordenadas = minhasSolicitacoes.slice().sort(function(x,y){ return (y.createdAt||"")<(x.createdAt||"")?-1:1; });
+    var ordenadas = minhasSolicitacoes.slice()
+      .filter(solicNaTab)
+      .sort(function(x,y){ return (y.createdAt||"")<(x.createdAt||"")?-1:1; });
+    var vazio = solicTab==="todas" ? "Você ainda não fez nenhuma solicitação." : "Nenhuma solicitação nesta categoria.";
     var lista = ordenadas.length ? ordenadas.map(cardSolicitacao).join("")
-      : '<div class="lista-vazia">Você ainda não fez nenhuma solicitação.</div>';
+      : '<div class="lista-vazia">'+vazio+'</div>';
     return '<div class="only-desktop pg-head"><h1>Solicitações</h1></div>'+tabs+nova+lista;
   }
   window.responderContra = async function(id, aceitar){
@@ -626,8 +680,11 @@ import './styles.css';
     if(st==="vencido") return (c.vencimento?("Venceu em "+fmtDataBR(c.vencimento)):"Em atraso");
     return (c.vencimento?("Vence em "+fmtDataBR(c.vencimento)):"Em aberto");
   }
+  window.setFinTab = function(t){ finTab=t; ir("financeiro"); };
   function screenFinanceiro(){
-    var tabs='<div class="seg"><button class="seg-b active">Cobranças</button><button class="seg-b" onclick="toast(\'Histórico: em breve\')">Histórico</button></div>';
+    var tabs='<div class="seg">'+
+      '<button class="seg-b'+(finTab==="cobrancas"?" active":"")+'" onclick="setFinTab(\'cobrancas\')">Cobranças</button>'+
+      '<button class="seg-b'+(finTab==="historico"?" active":"")+'" onclick="setFinTab(\'historico\')">Histórico</button></div>';
 
     // Situação: vencidas, próxima em aberto (futura mais próxima).
     var vencidas = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="vencido"; });
@@ -648,12 +705,19 @@ import './styles.css';
         '<div class="fin-banner-s">Você não tem pagamentos pendentes no momento</div></div></div>';
     }
 
-    var ordenadas = minhasCobrancas.slice().sort(function(a,b){
-      return (b.vencimento||"")<(a.vencimento||"")?-1:1;  // mais recentes primeiro
-    });
+    // Cobranças = em aberto (pendente/vencido); Histórico = pagas.
+    var ordenadas = minhasCobrancas.slice()
+      .filter(function(c){
+        var st=statusCobranca(c);
+        return finTab==="historico" ? st==="pago" : st!=="pago";
+      })
+      .sort(function(a,b){
+        return (b.vencimento||"")<(a.vencimento||"")?-1:1;  // mais recentes primeiro
+      });
+    var vazioFin = finTab==="historico" ? "Nenhum pagamento no histórico ainda." : "Nenhuma cobrança em aberto.";
     var cobr;
     if(!ordenadas.length){
-      cobr='<div class="lista-vazia">Nenhuma cobrança registrada ainda.</div>';
+      cobr='<div class="lista-vazia">'+vazioFin+'</div>';
     } else {
       cobr=ordenadas.map(function(c){
         var st=statusCobranca(c);
@@ -667,7 +731,8 @@ import './styles.css';
     var pix='<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
       '<div class="fin-pix-val">'+pixPersonal+'</div></div>';
 
-    return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+banner+cobr+pix;
+    var bannerVis = finTab==="cobrancas" ? banner : "";
+    return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+bannerVis+cobr+pix;
   }
 
   /* =========================================================================

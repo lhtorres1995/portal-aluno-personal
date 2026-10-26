@@ -256,8 +256,14 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .cal-dot.teal{background:var(--teal);}
 .cal-dot.white{background:var(--fg);}
 .cal-cell.sel .cal-dot{background:#042523;}
+.agenda-wrap.ag-full{grid-template-columns:1fr;}
 .agenda-lado{display:flex;flex-direction:column;gap:14px;}
-.seg-agenda{align-self:flex-end;}
+.agenda-lado-det{padding:18px;}
+.seg-agenda{margin-bottom:16px;}
+.sem-dia{padding:12px 0;border-bottom:1px solid var(--card-line);}
+.sem-dia:last-child{border-bottom:none;}
+.sem-dia.hoje .grupo-dia{color:var(--teal);}
+.sem-vazio{color:var(--muted);font-size:13px;padding:2px 2px 4px;}
 .agenda-det{padding:18px;}
 .agenda-det-dia{font-size:16px;font-weight:700;font-family:var(--fdisp);margin-bottom:14px;}
 .agenda-det-item{margin-bottom:10px;}
