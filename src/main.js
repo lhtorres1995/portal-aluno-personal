@@ -45,6 +45,7 @@ import './styles.css';
   var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="";
   var meuTreinoTipo="forca", meuTreinoLocal="", meuCheckinToken="";
   var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
+  var pixTipoPersonal="", cidadePersonal="";
   var dispPersonal=[]; // disponibilidade do personal: {dia, ini, fim} (dias 0-6)
   var aulas = [];              // reais: {id,data,hora,status}
   var minhasSolicitacoes = []; // reais: {id,aulaId,tipo,dataSugerida,horaSugerida,status,createdAt}
@@ -201,6 +202,12 @@ import './styles.css';
       var tkRes = await sb.from("alunos").select("checkin_token").eq("id", meuAlunoId).maybeSingle();
       meuCheckinToken = (tkRes.error || !tkRes.data) ? "" : (tkRes.data.checkin_token||"");
     } catch(e){ meuCheckinToken = ""; }
+
+    // Tipo da chave Pix + cidade do personal (tolerante: só após a migração 0013).
+    try {
+      var pxRes = await sb.from("profiles").select("pix_tipo, cidade").eq("id", meuProfessorId).maybeSingle();
+      if(!pxRes.error && pxRes.data){ pixTipoPersonal = pxRes.data.pix_tipo||""; cidadePersonal = pxRes.data.cidade||""; }
+    } catch(e){ pixTipoPersonal=""; cidadePersonal=""; }
 
     // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
     try {
@@ -738,29 +745,77 @@ import './styles.css';
     return (c.vencimento?("Vence em "+fmtDataBR(c.vencimento)):"Em aberto");
   }
   window.setFinTab = function(t){ finTab=t; ir("financeiro"); };
-  window.abrirPagamento = function(id){
+  /* ---- Pix copia-e-cola (BR Code EMV) ---------------------------------- */
+  function soDigitos(s){ return (s||"").replace(/\D/g,""); }
+  function semAcentoUpper(s){ return (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase().replace(/[^A-Z0-9 ]/g," ").replace(/\s+/g," ").trim(); }
+  function crc16ccitt(str){
+    var crc=0xFFFF;
+    for(var i=0;i<str.length;i++){
+      crc ^= (str.charCodeAt(i) & 0xFF) << 8;
+      for(var j=0;j<8;j++){ crc = (crc & 0x8000) ? ((crc<<1) ^ 0x1021) : (crc<<1); crc &= 0xFFFF; }
+    }
+    return ("000"+crc.toString(16).toUpperCase()).slice(-4);
+  }
+  function tlv(id, val){ return id + ("0"+val.length).slice(-2) + val; }
+  // Normaliza a chave conforme o tipo. Retorna null quando não dá para montar
+  // com segurança (ex.: numérico sem tipo definido -> ambíguo CPF x telefone).
+  function normalizarChavePix(chave, tipo){
+    var c=(chave||"").trim(); tipo=(tipo||"").toLowerCase();
+    if(!tipo){
+      if(c.indexOf("@")>=0) tipo="email";
+      else if(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(c)) tipo="aleatoria";
+      else return null;
+    }
+    if(tipo==="email") return c.toLowerCase();
+    if(tipo==="aleatoria") return c;
+    if(tipo==="telefone"){ var d=soDigitos(c); if(d.indexOf("55")===0 && d.length>=12) return "+"+d; if(d.length>=10 && d.length<=11) return "+55"+d; return null; }
+    if(tipo==="cpf"){ var cp=soDigitos(c); return cp.length===11?cp:null; }
+    if(tipo==="cnpj"){ var cn=soDigitos(c); return cn.length===14?cn:null; }
+    return null;
+  }
+  function montarPixCopiaECola(opts){
+    var chave = normalizarChavePix(opts.chave, opts.tipo);
+    if(!chave) return null;
+    var nome = (semAcentoUpper(opts.nome).slice(0,25)) || "RECEBEDOR";
+    var cidade = (semAcentoUpper(opts.cidade).slice(0,15)) || "BRASIL";
+    var gui = tlv("26", tlv("00","br.gov.bcb.pix")+tlv("01",chave));
+    var valor = (opts.valor!=null) ? Number(opts.valor).toFixed(2) : null;
+    var payload = tlv("00","01")+gui+tlv("52","0000")+tlv("53","986")+
+      (valor?tlv("54",valor):"")+tlv("58","BR")+tlv("59",nome)+tlv("60",cidade)+
+      tlv("62", tlv("05","***"))+"6304";
+    return payload + crc16ccitt(payload);
+  }
+  window.abrirPagamento = async function(id){
     var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
     if(!c) return;
     var chave = pixPersonal || "(chave PIX não cadastrada)";
+    var brcode = pixPersonal ? montarPixCopiaECola({ chave:pixPersonal, tipo:pixTipoPersonal, nome:nomePersonal, cidade:cidadePersonal, valor:c.valor }) : null;
+    var blocoQR = "";
+    if(brcode){
+      var svg=""; try{ svg = await QRCode.toString(brcode, { type:"svg", margin:1, errorCorrectionLevel:"M" }); }catch(e){ svg=""; }
+      blocoQR = (svg ? '<div class="pag-qr-cap">Escaneie no app do seu banco</div><div class="qr-panel pag-qr">'+svg+'</div>' : '')+
+        '<div class="pag-pix-cap">Pix copia e cola</div>'+
+        '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-brcode">'+brcode+'</span>'+
+        '<button class="btn btn-dark pag-copy" onclick="copiarTexto(\'pag-brcode\')">Copiar</button></div>';
+    }
     var html='<div class="pag-modal">'+
       '<div class="modal-tit">Pagamento via Pix</div>'+
       '<div class="modal-sub">'+c.label+'</div>'+
       '<div class="pag-valor">'+fmtMoeda(c.valor)+'</div>'+
-      '<div class="pag-pix"><div class="pag-pix-cap">Chave Pix do seu personal</div>'+
+      blocoQR+
+      '<div class="pag-pix"><div class="pag-pix-cap">'+(brcode?'Ou pague pela chave':'Chave Pix do seu personal')+'</div>'+
         '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-pix-key">'+chave+'</span>'+
-        '<button class="btn btn-dark pag-copy" onclick="copiarPix()">Copiar</button></div></div>'+
-      '<div class="pag-hint">Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima. Depois é só avisar seu personal.</div>'+
+        '<button class="btn btn-dark pag-copy" onclick="copiarTexto(\'pag-pix-key\')">Copiar</button></div></div>'+
+      '<div class="pag-hint">'+(brcode?'Escaneie o QR ou cole o código no app do seu banco (o valor já vai preenchido).':'Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima.')+' Depois é só avisar seu personal.</div>'+
       '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div></div>';
     abrirModal(html);
   };
-  window.copiarPix = function(){
-    var el=document.getElementById("pag-pix-key"); var txt=el?el.textContent:"";
-    function ok(){ toast("Chave Pix copiada!"); }
+  window.copiarTexto = function(elId){
+    var el=document.getElementById(elId); var txt=el?el.textContent:"";
+    function ok(){ toast("Copiado!"); }
     function fallback(t){ try{ var ta=document.createElement("textarea"); ta.value=t; ta.setAttribute("readonly",""); ta.style.position="absolute"; ta.style.left="-9999px"; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); ok(); }catch(e){ toast("Não consegui copiar. Copie manualmente."); } }
-    try{
-      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok, function(){ fallback(txt); }); }
-      else fallback(txt);
-    }catch(e){ fallback(txt); }
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok, function(){ fallback(txt); }); } else fallback(txt); }
+    catch(e){ fallback(txt); }
   };
   function screenFinanceiro(){
     var tabs='<div class="seg">'+
