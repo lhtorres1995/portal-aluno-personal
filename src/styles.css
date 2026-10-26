@@ -438,3 +438,15 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .modal-box textarea:focus{border-color:var(--teal);}
 .modal-acoes{display:flex;gap:10px;margin-top:6px;}
 .modal-acoes .btn{flex:1;}
+
+/* Solicitações v2: contraproposta + WhatsApp + dica de disponibilidade */
+.solic-wrap{margin-bottom:12px;}
+.solic-wrap .solic-card{margin-bottom:0;}
+.solic-contra{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-sm);padding:12px 14px;margin-top:8px;}
+.solic-contra-txt{font-size:13.5px;color:var(--fg);margin-bottom:10px;}
+.solic-contra-txt b{color:var(--teal);}
+.solic-contra-botoes{display:flex;gap:8px;justify-content:flex-end;align-items:center;}
+.btn-wa{background:#25D366;color:#fff;display:inline-flex;align-items:center;gap:6px;margin-right:auto;text-decoration:none;}
+.btn-wa svg{width:16px;height:16px;}
+.badge-info{background:rgba(0,229,215,.14);color:var(--teal);}
+.modal-hint{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-xs);padding:9px 11px;font-size:12.5px;color:var(--muted);margin-bottom:14px;}

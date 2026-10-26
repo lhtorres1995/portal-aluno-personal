@@ -43,7 +43,8 @@ import './styles.css';
   /* ---------------- Estado (dados reais) ---------------------------------- */
   var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="";
   var meuTreinoTipo="forca", meuTreinoLocal="";
-  var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="";
+  var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
+  var dispPersonal=[]; // disponibilidade do personal: {dia, ini, fim} (dias 0-6)
   var aulas = [];              // reais: {id,data,hora,status}
   var minhasSolicitacoes = []; // reais: {id,aulaId,tipo,dataSugerida,horaSugerida,status,createdAt}
   var tabAtual = "inicio";
@@ -168,26 +169,35 @@ import './styles.css';
 
     var res=await Promise.all([
       sb.from("aulas").select("id, data, hora, status").eq("aluno_id", meuAlunoId),
-      sb.from("profiles").select("nome, logo_url, pix").eq("id", meuProfessorId).maybeSingle()
+      sb.from("profiles").select("nome, logo_url, pix, telefone").eq("id", meuProfessorId).maybeSingle()
     ]);
     if(res[0].error) throw res[0].error;
     if(res[1].error) throw res[1].error;
     aulas=(res[0].data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status}; });
     var prof=res[1].data||{};
     nomePersonal=prof.nome||"Seu personal"; logoPersonal=prof.logo_url||null;
-    pixPersonal=prof.pix||"(chave PIX não cadastrada)";
+    pixPersonal=prof.pix||"(chave PIX não cadastrada)"; telefonePersonal=prof.telefone||"";
 
     // Solicitações reais (tolerante: se a tabela ainda não existir, não quebra o login).
     try {
       var sres = await sb.from("solicitacoes")
-        .select("id, aula_id, tipo, data_sugerida, hora_sugerida, status, created_at, resposta")
+        .select("id, aula_id, tipo, data_sugerida, hora_sugerida, contra_data, contra_hora, status, created_at, resposta")
         .eq("aluno_id", meuAlunoId);
       minhasSolicitacoes = sres.error ? [] : (sres.data||[]).map(rowToSolic);
     } catch(e){ minhasSolicitacoes = []; }
+
+    // Disponibilidade do personal (tolerante): só para exibir como dica ao pedir remarcação.
+    try {
+      var dres = await sb.from("disponibilidade_personal")
+        .select("dia_semana, hora_inicio, hora_fim, ativo").eq("professor_id", meuProfessorId);
+      dispPersonal = dres.error ? [] : (dres.data||[]).filter(function(d){return d.ativo!==false;})
+        .map(function(d){ return { dia:d.dia_semana, ini:(d.hora_inicio||"").slice(0,5), fim:(d.hora_fim||"").slice(0,5) }; });
+    } catch(e){ dispPersonal = []; }
   }
   function rowToSolic(r){
     return { id:r.id, aulaId:r.aula_id, tipo:r.tipo,
       dataSugerida:r.data_sugerida, horaSugerida:(r.hora_sugerida||"").slice(0,5),
+      contraData:r.contra_data, contraHora:(r.contra_hora||"").slice(0,5),
       status:r.status, createdAt:r.created_at, resposta:r.resposta||"" };
   }
 
@@ -291,6 +301,7 @@ import './styles.css';
     box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
     arrowDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
     pix:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l3.2 3.2a2 2 0 0 0 1.4.6H18L21.5 9.8a2 2 0 0 1 0 2.8L18 16.1h-1.4a2 2 0 0 0-1.4.6L12 20.9l-3.2-3.2a2 2 0 0 0-1.4-.6H6L2.5 13.6a2 2 0 0 1 0-2.8L6 7.3h1.4a2 2 0 0 0 1.4-.6L12 2.5z"/></svg>',
+    whats:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 0 1 0 16 8 8 0 0 1-4-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm-3.3 4c-.2 0-.5 0-.7.4-.2.4-.9.9-.9 2.2s.9 2.5 1 2.7c.2.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3l-2-1c-.3-.1-.5-.1-.7.1l-.6.8c-.1.2-.3.2-.5.1-.7-.3-1.4-.5-2.2-1.5-.3-.4 0-.3.4-1.1.1-.1 0-.3 0-.4l-.9-2.1c-.2-.6-.4-.5-.6-.5h-.6z"/></svg>',
     logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>'
   };
   var NAV = [
@@ -462,13 +473,47 @@ import './styles.css';
   /* =========================================================================
      TELA: Solicitações (mock — Fase 3)
      ========================================================================= */
-  function labelStatusSolic(st){ if(st==="aprovada")return"Aprovada"; if(st==="negada")return"Negada"; return"Em análise"; }
+  function labelStatusSolic(st){
+    if(st==="aprovada")return"Aprovada"; if(st==="negada")return"Negada";
+    if(st==="contraproposta")return"Horário sugerido"; return"Em análise";
+  }
+  function badgeSolic(st){
+    var cls="warn";
+    if(st==="aprovada")cls="ok"; else if(st==="negada")cls="dang"; else if(st==="contraproposta")cls="info";
+    return '<span class="badge badge-'+cls+'">'+labelStatusSolic(st)+'</span>';
+  }
   function visualSolic(s){ return s.tipo==="remarcar" ? {titulo:"Remarcação de aula",ic:"agenda",cor:"red"} : {titulo:"Cancelamento de aula",ic:"check",cor:"green"}; }
   function quandoSolic(s){
-    if(s.tipo==="remarcar" && s.dataSugerida){ return "Novo: "+capitalizar(diaSemanaLabel(s.dataSugerida)).slice(0,3)+", "+fmtDataBR(s.dataSugerida).slice(0,5)+(s.horaSugerida?" • "+s.horaSugerida:""); }
+    if(s.tipo==="remarcar" && s.dataSugerida){ return "Pedido: "+capitalizar(diaSemanaLabel(s.dataSugerida)).slice(0,3)+", "+fmtDataBR(s.dataSugerida).slice(0,5)+(s.horaSugerida?" • "+s.horaSugerida:""); }
     var a=getAula(s.aulaId);
     if(a) return capitalizar(diaSemanaLabel(a.data)).slice(0,3)+", "+fmtDataBR(a.data).slice(0,5)+" • "+a.hora;
     return "";
+  }
+  function waLink(tel, msg){ var d=(tel||"").replace(/\D/g,""); if(d.length<=11) d="55"+d; return "https://wa.me/"+d+"?text="+encodeURIComponent(msg); }
+  function waPersonalBtn(){
+    if(!telefonePersonal) return "";
+    var msg="Olá "+((nomePersonal||"").split(" ")[0])+"! Sobre minha solicitação no portal LT360...";
+    return '<a class="btn btn-wa" href="'+waLink(telefonePersonal,msg)+'" target="_blank" rel="noopener">'+IC.whats+' WhatsApp</a>';
+  }
+  function cardSolicitacao(s){
+    var v=visualSolic(s);
+    var topo='<div class="solic-card">'+
+      '<span class="solic-ic '+v.cor+'">'+IC[v.ic]+'</span>'+
+      '<div class="solic-info"><div class="solic-tit">'+v.titulo+'</div><div class="solic-quando">'+quandoSolic(s)+'</div>'+
+      '<div class="solic-sol">Solicitado em '+fmtDataBR((s.createdAt||HOJE_STR).slice(0,10))+'</div></div>'+
+      '<div class="solic-dir">'+badgeSolic(s.status)+'<span class="chev">'+IC.chevR+'</span></div></div>';
+    var extra="";
+    if(s.status==="contraproposta"){
+      extra='<div class="solic-contra">'+
+        '<div class="solic-contra-txt">Seu personal sugeriu: <b>'+capitalizar(diaSemanaLabel(s.contraData)).slice(0,3)+', '+fmtDataBR(s.contraData).slice(0,5)+' • '+s.contraHora+'</b></div>'+
+        '<div class="solic-contra-botoes">'+ waPersonalBtn() +
+          '<button class="btn btn-dark" onclick="responderContra(\''+s.id+'\',false)">Recusar</button>'+
+          '<button class="btn btn-primary" onclick="responderContra(\''+s.id+'\',true)">Aceitar</button>'+
+        '</div></div>';
+    } else if(s.status==="em_analise" && telefonePersonal){
+      extra='<div class="solic-contra"><div class="solic-contra-botoes">'+waPersonalBtn()+'</div></div>';
+    }
+    return '<div class="solic-wrap">'+topo+extra+'</div>';
   }
   function screenSolic(){
     var tabs='<div class="seg seg-wrap"><button class="seg-b active">Todas</button>'+
@@ -477,14 +522,31 @@ import './styles.css';
       '<button class="seg-b" onclick="toast(\'Filtro: em breve\')">Negadas</button></div>';
     var nova='<button class="btn btn-primary btn-nova" onclick="toast(\'Para pedir remarcação ou cancelamento, use os botões na aba Aulas.\')">'+IC.plus+' Nova solicitação</button>';
     var ordenadas = minhasSolicitacoes.slice().sort(function(x,y){ return (y.createdAt||"")<(x.createdAt||"")?-1:1; });
-    var lista = ordenadas.length ? ordenadas.map(function(s){
-      var v=visualSolic(s);
-      return '<div class="solic-card"><span class="solic-ic '+v.cor+'">'+IC[v.ic]+'</span>'+
-        '<div class="solic-info"><div class="solic-tit">'+v.titulo+'</div><div class="solic-quando">'+quandoSolic(s)+'</div>'+
-        '<div class="solic-sol">Solicitado em '+fmtDataBR((s.createdAt||HOJE_STR).slice(0,10))+'</div></div>'+
-        '<div class="solic-dir">'+statusBadge(labelStatusSolic(s.status))+'<span class="chev">'+IC.chevR+'</span></div></div>';
-    }).join("") : '<div class="lista-vazia">Você ainda não fez nenhuma solicitação.</div>';
+    var lista = ordenadas.length ? ordenadas.map(cardSolicitacao).join("")
+      : '<div class="lista-vazia">Você ainda não fez nenhuma solicitação.</div>';
     return '<div class="only-desktop pg-head"><h1>Solicitações</h1></div>'+tabs+nova+lista;
+  }
+  window.responderContra = async function(id, aceitar){
+    var r = await sb.rpc("responder_contraproposta", { p_solic_id:id, p_aceitar: aceitar });
+    if(r.error){ console.error(r.error); toast("Não foi possível: "+(r.error.message||"erro")); return; }
+    await recarregarAposResposta();
+    toast(aceitar ? "Horário confirmado! Aula remarcada." : "Sugestão recusada.");
+    ir("solicitacoes");
+  };
+  async function recarregarAposResposta(){
+    try{
+      var au = await sb.from("aulas").select("id, data, hora, status").eq("aluno_id", meuAlunoId);
+      if(!au.error) aulas = (au.data||[]).map(function(r){ return {id:r.id,data:r.data,hora:(r.hora||"").slice(0,5),status:r.status}; });
+      var sr = await sb.from("solicitacoes").select("id, aula_id, tipo, data_sugerida, hora_sugerida, contra_data, contra_hora, status, created_at, resposta").eq("aluno_id", meuAlunoId);
+      if(!sr.error) minhasSolicitacoes = (sr.data||[]).map(rowToSolic);
+    }catch(e){ console.error(e); }
+  }
+  function dispHint(){
+    if(!dispPersonal.length) return "";
+    var ABREV=["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"], byDay={};
+    dispPersonal.forEach(function(d){ (byDay[d.dia]=byDay[d.dia]||[]).push(d.ini+"–"+d.fim); });
+    var parts=[]; for(var i=0;i<7;i++){ if(byDay[i]) parts.push(ABREV[i]+" "+byDay[i].join(", ")); }
+    return parts.length ? '<div class="modal-hint">Seu personal atende: '+parts.join(" · ")+'</div>' : "";
   }
 
   function getAula(id){ for(var i=0;i<aulas.length;i++) if(aulas[i].id===id) return aulas[i]; return null; }
@@ -499,6 +561,7 @@ import './styles.css';
     abrirModal(
       '<div class="modal-tit">Pedir remarcação</div>'+
       '<div class="modal-sub">Aula atual: '+capitalizar(diaSemanaLabel(a.data))+', '+fmtDataBR(a.data)+' • '+a.hora+'</div>'+
+      dispHint()+
       '<div class="field"><label for="solic-data">Nova data</label><input id="solic-data" type="date" value="'+addDias(a.data,1)+'"></div>'+
       '<div class="field"><label for="solic-hora">Novo horário</label><input id="solic-hora" type="time" value="'+a.hora+'"></div>'+
       '<div class="field"><label for="solic-msg">Mensagem (opcional)</label><textarea id="solic-msg" placeholder="Ex.: tenho um compromisso nesse horário"></textarea></div>'+
