@@ -44,6 +44,7 @@ import './styles.css';
   /* ---------------- Estado (dados reais) ---------------------------------- */
   var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="";
   var meuTreinoTipo="forca", meuTreinoLocal="", meuCheckinToken="";
+  var meuPlanoCobranca="", meuValorAula=0;
   var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
   var pixTipoPersonal="", cidadePersonal="";
   var dispPersonal=[]; // disponibilidade do personal: {dia, ini, fim} (dias 0-6)
@@ -160,12 +161,13 @@ import './styles.css';
   }
 
   async function carregarMeusDados(authUserId){
-    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local").eq("auth_user_id", authUserId).maybeSingle();
+    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local, plano_cobranca, valor_aula").eq("auth_user_id", authUserId).maybeSingle();
     if (alunoRes.error) throw alunoRes.error;
     if (!alunoRes.data) throw new Error("Cadastro de aluno não encontrado.");
     meuAlunoId=alunoRes.data.id; meuProfessorId=alunoRes.data.professor_id;
     meuNome=alunoRes.data.nome||""; meuTelefone=alunoRes.data.telefone||"";
     meuTreinoTipo=alunoRes.data.treino_tipo||"forca"; meuTreinoLocal=alunoRes.data.treino_local||"";
+    meuPlanoCobranca=alunoRes.data.plano_cobranca||""; meuValorAula=Number(alunoRes.data.valor_aula)||0;
 
     var sess=await sb.auth.getSession();
     meuEmail=(sess.data.session&&sess.data.session.user&&sess.data.session.user.email)||"";
@@ -211,7 +213,7 @@ import './styles.css';
 
     // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
     try {
-      var baseCols = "id, valor, referencia, periodo_label, status, data_vencimento, data_pagamento";
+      var baseCols = "id, valor, referencia, periodo_label, status, data_vencimento, data_pagamento, aula_ids";
       var pres = await sb.from("pagamentos").select(baseCols+", pago_informado_em").eq("aluno_id", meuAlunoId);
       if(pres.error){ // coluna pode não existir antes da migração 0014
         pres = await sb.from("pagamentos").select(baseCols).eq("aluno_id", meuAlunoId);
@@ -225,7 +227,9 @@ import './styles.css';
       status:r.status||"pendente",
       vencimento:r.data_vencimento||null,
       pagamento:r.data_pagamento||null,
-      pagoInformado: !!r.pago_informado_em };
+      pagoInformado: !!r.pago_informado_em,
+      referencia:r.referencia||null,
+      aulaIds: r.aula_ids||[] };
   }
   // Status efetivo de uma cobrança: pago / vencido / pendente.
   function statusCobranca(c){
@@ -827,17 +831,35 @@ import './styles.css';
       aplicarSino(document.getElementById("btn-bell"));
     }catch(e){ console.error(e); toast("Falha ao avisar o pagamento."); }
   };
+  function aulasDaCobranca(c){
+    return (c.aulaIds && c.aulaIds.length)
+      ? aulas.filter(function(a){ return c.aulaIds.indexOf(a.id)>-1; }).sort(function(a,b){ return a.data<b.data?-1:1; })
+      : [];
+  }
   window.abrirComprovante = function(id){
     var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
     if(!c) return;
+    var doReceibo = aulasDaCobranca(c);
+    var valorUnit = (meuPlanoCobranca==="por_aula") ? meuValorAula : null;
+    var itens;
+    if(doReceibo.length){
+      itens = doReceibo.map(function(a){
+        return '<div class="comp-item"><span>'+capitalizar(diaSemanaLabel(a.data)).slice(0,3)+' · '+fmtDataBR(a.data)+' · '+a.hora+'</span>'+
+          (valorUnit!==null?'<b>'+fmtMoeda(valorUnit)+'</b>':'')+'</div>';
+      }).join("");
+    } else {
+      itens = '<div class="comp-item"><span>'+(c.referencia||c.label)+'</span><b>'+fmtMoeda(c.valor)+'</b></div>';
+    }
     var html='<div class="comprovante">'+
       '<div class="modal-tit">Comprovante</div>'+
       '<div class="comp-card"><div class="comp-top"><span class="comp-ok">'+IC.check+'</span>'+
         '<div><div class="comp-status">Pagamento confirmado</div><div class="comp-ref">'+c.label+'</div></div></div>'+
-        '<div class="comp-linha"><span>Valor</span><b>'+fmtMoeda(c.valor)+'</b></div>'+
         '<div class="comp-linha"><span>Aluno</span><b>'+meuNome+'</b></div>'+
         '<div class="comp-linha"><span>Personal</span><b>'+nomePersonal+'</b></div>'+
         (c.pagamento?'<div class="comp-linha"><span>Pago em</span><b>'+fmtDataBR(c.pagamento)+'</b></div>':'')+
+        '<div class="comp-itens-tit">Serviços prestados</div>'+
+        '<div class="comp-itens'+(doReceibo.length>=4?' cols-2':'')+'">'+itens+'</div>'+
+        '<div class="comp-total"><span>Total pago</span><b>'+fmtMoeda(c.valor)+'</b></div>'+
       '</div>'+
       '<div class="modal-acoes"><button class="btn btn-dark" onclick="fecharModalSolic()">Fechar</button>'+
         '<button class="btn btn-primary" onclick="compartilharComprovante(\''+c.id+'\')">Compartilhar</button></div></div>';
@@ -846,7 +868,8 @@ import './styles.css';
   window.compartilharComprovante = function(id){
     var c=null; minhasCobrancas.forEach(function(x){ if(x.id===id) c=x; });
     if(!c) return;
-    var txt="Comprovante LT360\n"+c.label+"\nValor: "+fmtMoeda(c.valor)+"\nAluno: "+meuNome+"\nPersonal: "+nomePersonal+(c.pagamento?"\nPago em: "+fmtDataBR(c.pagamento):"");
+    var linhas = aulasDaCobranca(c).map(function(a){ return "  • "+capitalizar(diaSemanaLabel(a.data)).slice(0,3)+" "+fmtDataBR(a.data)+" "+a.hora; }).join("\n");
+    var txt="Comprovante LT360\n"+c.label+"\nAluno: "+meuNome+"\nPersonal: "+nomePersonal+(c.pagamento?"\nPago em: "+fmtDataBR(c.pagamento):"")+(linhas?"\nServiços prestados:\n"+linhas:"")+"\nTotal pago: "+fmtMoeda(c.valor);
     if(navigator.share){ navigator.share({ title:"Comprovante LT360", text:txt }).catch(function(){}); }
     else { copiarTextoBruto(txt); }
   };

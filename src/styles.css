@@ -532,3 +532,16 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .comp-ref{font-size:12.5px;color:var(--muted);margin-top:1px;}
 .comp-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;font-size:14px;}
 .comp-linha span{color:var(--muted);}
+
+/* Comprovante: serviços prestados + total */
+.comp-itens-tit{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 0 8px;padding-top:12px;border-top:1px solid var(--card-line);}
+.comp-itens{display:flex;flex-direction:column;gap:6px;}
+.comp-itens.cols-2{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;}
+.comp-item{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;}
+.comp-item span{color:var(--fg);}
+.comp-item b{color:var(--fg);white-space:nowrap;}
+.comp-total{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding:12px 14px;
+  background:var(--green-bg);border-radius:var(--radius-sm);}
+.comp-total span{color:var(--green);font-weight:600;}
+.comp-total b{color:var(--green);font-family:var(--fdisp);font-weight:800;font-size:18px;}
+@media (max-width:420px){ .comp-itens.cols-2{grid-template-columns:1fr;} }
