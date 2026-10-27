@@ -749,9 +749,12 @@ import './styles.css';
       : '<div class="lista-vazia">'+vazio+'</div>';
     return '<div class="only-desktop pg-head"><h1>Solicitações</h1></div>'+tabs+nova+lista;
   }
+  // Dispara push (não bloqueia a UI; falha silenciosa).
+  function invocarPush(body){ try{ sb.functions.invoke("enviar-push", { body: body }).catch(function(){}); }catch(e){} }
   window.responderContra = async function(id, aceitar){
     var r = await sb.rpc("responder_contraproposta", { p_solic_id:id, p_aceitar: aceitar });
     if(r.error){ console.error(r.error); toast("Não foi possível: "+(r.error.message||"erro")); return; }
+    invocarPush({ tipo:"contraproposta_respondida", solicitacao_id:id, aceitar:aceitar });
     await recarregarAposResposta();
     toast(aceitar ? "Horário confirmado! Aula remarcada." : "Sugestão recusada.");
     ir("solicitacoes");
@@ -812,7 +815,7 @@ import './styles.css';
     var btn=document.getElementById("solic-enviar"); if(btn){ btn.disabled=true; btn.textContent="Enviando..."; }
     var r=await sb.from("solicitacoes").insert(payload).select().maybeSingle();
     if(r.error){ console.error(r.error); toast("Não foi possível enviar: "+(r.error.message||"erro")); if(btn){btn.disabled=false;btn.textContent="Enviar pedido";} return; }
-    if(r.data) minhasSolicitacoes.unshift(rowToSolic(r.data));
+    if(r.data){ minhasSolicitacoes.unshift(rowToSolic(r.data)); invocarPush({ tipo:"solicitacao_aberta", solicitacao_id:r.data.id }); }
     document.getElementById("modal-overlay").hidden=true;
     toast("Solicitação enviada ao personal.");
     ir("solicitacoes");
@@ -904,6 +907,7 @@ import './styles.css';
     try{
       var r = await sb.rpc("informar_pagamento", { p_pagamento_id:id });
       if(r.error){ toast("Não foi possível avisar: "+(r.error.message||"erro")); return; }
+      invocarPush({ tipo:"pagamento_informado", pagamento_id:id });
       minhasCobrancas.forEach(function(x){ if(x.id===id) x.pagoInformado=true; });
       document.getElementById("modal-overlay").hidden=true;
       toast("Avisamos seu personal! Ele vai confirmar o recebimento.");
