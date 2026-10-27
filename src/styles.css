@@ -571,3 +571,10 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .logo-img-m.logo-custom{max-height:30px;max-width:150px;}
 .logo-av{background:#fff;overflow:hidden;}
 .logo-av-img{width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box;display:block;}
+
+/* Bloco de notificações no perfil */
+.notif-bloco{margin-bottom:18px;}
+.notif-bloco-s{font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.5;}
+.notif-row-estado{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.notif-on{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-weight:700;font-size:13.5px;}
+.notif-on svg{width:16px;height:16px;}

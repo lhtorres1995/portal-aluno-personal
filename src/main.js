@@ -24,6 +24,65 @@ import './styles.css';
     });
   }
 
+  /* ---------------- Push (notificações) ---------------------------------- */
+  var VAPID_PUBLIC = "BKE_rvm-bWgqtyXo060a1aJCWl5MP8tTieToNbcGKUJbBuyKOIsftrnF5biHRsd9haNdP3FtMPp6a-bl_pICWco";
+  function pushSuportado(){ return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window); }
+  function b64ToUint8(b64){
+    var pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    var base64 = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    var raw = atob(base64); var arr = new Uint8Array(raw.length);
+    for (var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+    return arr;
+  }
+  async function estadoNotif(){
+    if(!pushSuportado()) return "indisponivel";
+    if(Notification.permission === "denied") return "bloqueado";
+    try{ var reg = await navigator.serviceWorker.ready; var sub = await reg.pushManager.getSubscription(); return sub ? "ativo" : "inativo"; }
+    catch(e){ return "inativo"; }
+  }
+  window.renderNotifBloco = async function(){
+    var box = document.getElementById("notif-bloco");
+    if(!box) return;
+    var st = await estadoNotif();
+    if(st === "indisponivel"){
+      box.innerHTML = '<div class="notif-bloco-s">Seu navegador não suporta notificações. No iPhone, instale o app na tela inicial para receber.</div>';
+    } else if(st === "bloqueado"){
+      box.innerHTML = '<div class="notif-bloco-s">As notificações estão bloqueadas nas configurações do navegador para este site. Libere-as ali para ativar.</div>';
+    } else if(st === "ativo"){
+      box.innerHTML = '<div class="notif-row-estado"><span class="notif-on">'+IC.check+' Ativadas neste aparelho</span>'+
+        '<button class="btn btn-dark" onclick="desativarNotificacoes()">Desativar</button></div>';
+    } else {
+      box.innerHTML = '<div class="notif-bloco-s">Receba avisos de solicitações respondidas, aulas e pagamentos.</div>'+
+        '<button class="btn btn-primary block" onclick="ativarNotificacoes()">'+IC.bell+' Ativar notificações</button>';
+    }
+  };
+  window.ativarNotificacoes = async function(){
+    if(!pushSuportado()){ toast("Seu navegador não suporta notificações."); return; }
+    try{
+      var perm = await Notification.requestPermission();
+      if(perm !== "granted"){ toast("Permissão não concedida."); renderNotifBloco(); return; }
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if(!sub){
+        sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64ToUint8(VAPID_PUBLIC) });
+      }
+      var j = sub.toJSON();
+      var r = await sb.rpc("salvar_push_subscription", { p_endpoint: sub.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_ua: navigator.userAgent });
+      if(r.error) throw r.error;
+      toast("Notificações ativadas!");
+      renderNotifBloco();
+    }catch(e){ console.error(e); toast("Não consegui ativar as notificações."); renderNotifBloco(); }
+  };
+  window.desativarNotificacoes = async function(){
+    try{
+      var reg = await navigator.serviceWorker.ready;
+      var sub = await reg.pushManager.getSubscription();
+      if(sub){ try{ await sb.rpc("remover_push_subscription", { p_endpoint: sub.endpoint }); }catch(_){} await sub.unsubscribe(); }
+      toast("Notificações desativadas.");
+      renderNotifBloco();
+    }catch(e){ console.error(e); toast("Não consegui desativar."); renderNotifBloco(); }
+  };
+
   var DIAS = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
   var MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
@@ -976,7 +1035,8 @@ import './styles.css';
         '<input type="file" accept="image/*" onchange="enviarFotoAluno(this)" hidden></label>'+
       (meuFotoUrl?'<button class="btn btn-dark" onclick="removerFotoAluno()">Remover</button>':'')+'</div>';
     var dados='<div class="perfil-foto-bloco">'+foto+acoesFoto+'</div>'+
-      '<div class="perfil-dados">'+linhaPerfil("Nome",meuNome)+linhaPerfil("E-mail",meuEmail)+linhaPerfil("Telefone",meuTelefone)+linhaPerfil("Personal",nomePersonal)+'</div>';
+      '<div class="perfil-dados">'+linhaPerfil("Nome",meuNome)+linhaPerfil("E-mail",meuEmail)+linhaPerfil("Telefone",meuTelefone)+linhaPerfil("Personal",nomePersonal)+'</div>'+
+      '<h3 class="section-title">Notificações</h3><div id="notif-bloco" class="notif-bloco"><div class="notif-bloco-s">Verificando…</div></div>';
     var senha='<h3 class="section-title">Trocar senha</h3>'+
       '<form class="perfil-form" onsubmit="trocarSenha(event)"><div class="auth-erro" id="senha-erro" hidden></div><div class="auth-msg" id="senha-msg" hidden></div>'+
       '<div class="field"><label for="nova-senha">Nova senha</label><div class="input-ic"><input id="nova-senha" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres"><button type="button" class="input-ic-eye" onclick="toggleSenha(\'nova-senha\')">&#128065;</button></div></div>'+
@@ -1085,6 +1145,7 @@ import './styles.css';
     var c=document.getElementById("content");
     c.innerHTML='<div class="screen screen-'+id+'">'+ (SCREENS[id]?SCREENS[id]():"") +'</div>';
     c.scrollTop=0;
+    if(id==="perfil") renderNotifBloco();
   };
   function renderAll(){ /* compat: entra pela ir() após login */ }
 
