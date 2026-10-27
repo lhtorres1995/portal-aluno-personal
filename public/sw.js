@@ -44,3 +44,36 @@ self.addEventListener('fetch', function(e){
     })
   );
 });
+
+/* ---------------- Push (notificações) ---------------------------------- */
+self.addEventListener('push', function(e){
+  var data = {};
+  try { data = e.data ? e.data.json() : {}; }
+  catch(_){ data = { title: 'LT360', body: e.data ? e.data.text() : '' }; }
+  var title = data.title || 'LT360';
+  var opts = {
+    body: data.body || '',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: data.url || '/' }
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', function(e){
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || '/';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(wins){
+      for (var i=0;i<wins.length;i++){
+        var w = wins[i];
+        if (w.url.indexOf(self.location.origin) === 0 && 'focus' in w){
+          w.focus();
+          if (w.navigate) { try { w.navigate(url); } catch(_){} }
+          return;
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
+  );
+});
