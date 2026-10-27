@@ -35,12 +35,7 @@ import './styles.css';
   function dataLongaBR(d){ return capitalizar(DIAS[d.getDay()])+", "+d.getDate()+" de "+MESES[d.getMonth()]+" de "+d.getFullYear(); }
   function iniciais(nome){ var p=(nome||"").trim().split(/\s+/); if(!p[0])return"A"; return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
   function avatarInner(){ return meuFotoUrl ? '<img class="avatar-img" src="'+meuFotoUrl+'" alt="">' : iniciais(meuNome); }
-  // Marca exibida no portal: logo do personal (se houver) ou a LT360.
-  function brandLogo(extraCls){
-    return logoPersonal
-      ? '<img class="logo-img '+(extraCls||'')+' logo-custom" src="'+logoPersonal+'" alt="'+nomePersonal+'">'
-      : '<img class="logo-img '+(extraCls||'')+'" src="/logo_lt360.png" alt="LT360">';
-  }
+  // Logo do personal (se houver) ou iniciais, exibida na caixa "Seu personal".
   function logoPersonalBox(){
     return logoPersonal
       ? '<span class="avatar avatar-foto logo-av"><img class="logo-av-img" src="'+logoPersonal+'" alt=""></span>'
@@ -410,8 +405,6 @@ import './styles.css';
   function renderShell(){
     aplicarSino(document.getElementById("btn-bell"));
     var _ta=document.getElementById("topbar-avatar"); if(_ta) _ta.innerHTML=avatarInner();
-    var _sl=document.querySelector(".sidebar-logo");
-    if(_sl) _sl.innerHTML = brandLogo("") + '<div class="brand-sub">PORTAL DO ALUNO</div>';
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){
       return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
     }).join("");
@@ -430,7 +423,7 @@ import './styles.css';
     var el=document.getElementById("m-header");
     if(tabAtual==="inicio"){
       el.className="m-header m-header-inicio";
-      el.innerHTML=brandLogo("logo-img-m")+
+      el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
         '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
         '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div></div>';
     } else {
