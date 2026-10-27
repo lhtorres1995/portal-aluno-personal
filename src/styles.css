@@ -545,3 +545,11 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .comp-total span{color:var(--green);font-weight:600;}
 .comp-total b{color:var(--green);font-family:var(--fdisp);font-weight:800;font-size:18px;}
 @media (max-width:420px){ .comp-itens.cols-2{grid-template-columns:1fr;} }
+
+/* Foto do aluno (avatar com imagem) */
+.avatar{overflow:hidden;}
+.avatar-img{width:100%;height:100%;object-fit:cover;display:block;}
+.perfil-foto{overflow:hidden;}
+.perfil-foto .avatar-img{width:100%;height:100%;object-fit:cover;}
+.perfil-foto-acoes{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.perfil-foto-btn{display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}

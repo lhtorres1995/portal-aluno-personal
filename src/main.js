@@ -32,6 +32,7 @@ import './styles.css';
   function diaSemanaLabel(iso){ return DIAS[new Date(iso+"T00:00:00").getDay()]; }
   function dataLongaBR(d){ return capitalizar(DIAS[d.getDay()])+", "+d.getDate()+" de "+MESES[d.getMonth()]+" de "+d.getFullYear(); }
   function iniciais(nome){ var p=(nome||"").trim().split(/\s+/); if(!p[0])return"A"; return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
+  function avatarInner(){ return meuFotoUrl ? '<img class="avatar-img" src="'+meuFotoUrl+'" alt="">' : iniciais(meuNome); }
   function toast(msg){
     var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
     clearTimeout(t.__t); t.__t=setTimeout(function(){ t.classList.remove("show"); },2200);
@@ -49,7 +50,7 @@ import './styles.css';
   });
 
   /* ---------------- Estado (dados reais) ---------------------------------- */
-  var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="";
+  var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="", meuFotoUrl=null;
   var meuTreinoTipo="forca", meuTreinoLocal="", meuCheckinToken="";
   var meuPlanoCobranca="", meuValorAula=0;
   var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
@@ -162,17 +163,18 @@ import './styles.css';
     document.getElementById("app").hidden=false;
     document.getElementById("topbar-date").textContent = dataLongaBR(HOJE);
     document.getElementById("btn-bell").innerHTML = IC.bell;
-    document.getElementById("topbar-avatar").textContent = iniciais(meuNome);
+    document.getElementById("topbar-avatar").innerHTML = avatarInner();
     renderShell();
     ir("inicio");
   }
 
   async function carregarMeusDados(authUserId){
-    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local, plano_cobranca, valor_aula").eq("auth_user_id", authUserId).maybeSingle();
+    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local, plano_cobranca, valor_aula, foto_url").eq("auth_user_id", authUserId).maybeSingle();
     if (alunoRes.error) throw alunoRes.error;
     if (!alunoRes.data) throw new Error("Cadastro de aluno não encontrado.");
     meuAlunoId=alunoRes.data.id; meuProfessorId=alunoRes.data.professor_id;
     meuNome=alunoRes.data.nome||""; meuTelefone=alunoRes.data.telefone||"";
+    meuFotoUrl=alunoRes.data.foto_url||null;
     meuTreinoTipo=alunoRes.data.treino_tipo||"forca"; meuTreinoLocal=alunoRes.data.treino_local||"";
     meuPlanoCobranca=alunoRes.data.plano_cobranca||""; meuValorAula=Number(alunoRes.data.valor_aula)||0;
 
@@ -394,11 +396,12 @@ import './styles.css';
 
   function renderShell(){
     aplicarSino(document.getElementById("btn-bell"));
+    var _ta=document.getElementById("topbar-avatar"); if(_ta) _ta.innerHTML=avatarInner();
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){
       return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
     }).join("");
     document.getElementById("sidebar-foot").innerHTML =
-      '<button class="perfil-link" onclick="ir(\'perfil\')"><span class="avatar avatar-foto">'+iniciais(meuNome)+'</span>'+
+      '<button class="perfil-link" onclick="ir(\'perfil\')"><span class="avatar avatar-foto">'+avatarInner()+'</span>'+
         '<span class="perfil-link-txt"><b>'+meuNome+'</b><span>Ver perfil '+IC.chevR+'</span></span></button>'+
       '<div class="personal-box"><div class="personal-cap">Seu personal</div>'+
         '<div class="personal-row"><span class="avatar avatar-foto">'+iniciais(nomePersonal)+'</span>'+
@@ -414,7 +417,7 @@ import './styles.css';
       el.className="m-header m-header-inicio";
       el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
         '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
-        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+iniciais(meuNome)+'</div></div>';
+        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div></div>';
     } else {
       el.className="m-header m-header-titulo";
       var lbl = tabAtual==="perfil" ? "Meu perfil" : (NAV.filter(function(n){return n.id===tabAtual;})[0]||{label:""}).label;
@@ -954,7 +957,14 @@ import './styles.css';
      ========================================================================= */
   function linhaPerfil(r,v){ return '<div class="perfil-linha"><span class="perfil-rot">'+r+'</span><span class="perfil-val">'+(v||"—")+'</span></div>'; }
   function screenPerfil(){
-    var dados='<div class="perfil-foto-bloco"><div class="perfil-foto">'+iniciais(meuNome)+'</div><button class="btn btn-dark" disabled>Trocar foto (em breve)</button></div>'+
+    var foto = meuFotoUrl
+      ? '<div class="perfil-foto"><img class="avatar-img" src="'+meuFotoUrl+'" alt="Minha foto"></div>'
+      : '<div class="perfil-foto">'+iniciais(meuNome)+'</div>';
+    var acoesFoto = '<div class="perfil-foto-acoes">'+
+      '<label class="btn btn-dark perfil-foto-btn">'+(meuFotoUrl?'Trocar foto':'Adicionar foto')+
+        '<input type="file" accept="image/*" onchange="enviarFotoAluno(this)" hidden></label>'+
+      (meuFotoUrl?'<button class="btn btn-dark" onclick="removerFotoAluno()">Remover</button>':'')+'</div>';
+    var dados='<div class="perfil-foto-bloco">'+foto+acoesFoto+'</div>'+
       '<div class="perfil-dados">'+linhaPerfil("Nome",meuNome)+linhaPerfil("E-mail",meuEmail)+linhaPerfil("Telefone",meuTelefone)+linhaPerfil("Personal",nomePersonal)+'</div>';
     var senha='<h3 class="section-title">Trocar senha</h3>'+
       '<form class="perfil-form" onsubmit="trocarSenha(event)"><div class="auth-erro" id="senha-erro" hidden></div><div class="auth-msg" id="senha-msg" hidden></div>'+
@@ -977,6 +987,37 @@ import './styles.css';
       setErro("senha-msg","Senha alterada com sucesso."); toast("Senha alterada.");
     } catch(err){ console.error(err); setErro("senha-erro",(err&&err.message)||"Não foi possível alterar a senha."); }
     finally{ btn.disabled=false; btn.textContent="Salvar nova senha"; }
+  };
+  window.enviarFotoAluno = async function(input){
+    var file = input.files && input.files[0];
+    if(!file) return;
+    if(file.size > 2500000){ toast("Imagem muito grande. Use um arquivo de até 2,5MB."); input.value=""; return; }
+    toast("Enviando foto...");
+    try{
+      var sess = await sb.auth.getSession();
+      var uid = sess.data.session && sess.data.session.user && sess.data.session.user.id;
+      if(!uid) throw new Error("sem sessão");
+      var ext = (file.name.split(".").pop()||"jpg").toLowerCase();
+      var caminho = uid + "/foto-" + Date.now() + "." + ext;
+      var up = await sb.storage.from("fotos-alunos").upload(caminho, file, { upsert:true });
+      if(up.error) throw up.error;
+      var url = sb.storage.from("fotos-alunos").getPublicUrl(caminho).data.publicUrl;
+      var r = await sb.rpc("definir_foto_aluno", { p_url: url });
+      if(r.error) throw r.error;
+      meuFotoUrl = url;
+      renderShell(); ir("perfil");
+      toast("Foto atualizada!");
+    }catch(err){ console.error(err); toast("Não consegui enviar a foto. Tente de novo."); }
+    input.value="";
+  };
+  window.removerFotoAluno = async function(){
+    try{
+      var r = await sb.rpc("definir_foto_aluno", { p_url: null });
+      if(r.error) throw r.error;
+      meuFotoUrl = null;
+      renderShell(); ir("perfil");
+      toast("Foto removida.");
+    }catch(err){ console.error(err); toast("Não consegui remover a foto."); }
   };
 
   /* =========================================================================
