@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
+import Cropper from 'cropperjs';
+import 'cropperjs/dist/cropper.css';
 import './styles.css';
 
 /* ==========================================================================
@@ -988,28 +990,70 @@ import './styles.css';
     } catch(err){ console.error(err); setErro("senha-erro",(err&&err.message)||"Não foi possível alterar a senha."); }
     finally{ btn.disabled=false; btn.textContent="Salvar nova senha"; }
   };
-  window.enviarFotoAluno = async function(input){
+  var cropper = null, cropObjectUrl = null;
+  // 1) Seleciona o arquivo -> abre o editor de recorte (círculo, zoom, girar).
+  window.enviarFotoAluno = function(input){
     var file = input.files && input.files[0];
     if(!file) return;
-    if(file.size > 2500000){ toast("Imagem muito grande. Use um arquivo de até 2,5MB."); input.value=""; return; }
+    if(file.size > 8000000){ toast("Imagem muito grande. Use um arquivo de até 8MB."); input.value=""; return; }
+    if(!/^image\//.test(file.type)){ toast("Selecione um arquivo de imagem."); input.value=""; return; }
+    if(cropObjectUrl){ try{ URL.revokeObjectURL(cropObjectUrl); }catch(e){} }
+    cropObjectUrl = URL.createObjectURL(file);
+    var html='<div class="crop-modal">'+
+      '<div class="modal-tit">Ajustar foto</div>'+
+      '<div class="modal-sub">Arraste para posicionar, use o zoom e gire se precisar.</div>'+
+      '<div class="crop-area"><img id="crop-img" src="'+cropObjectUrl+'" alt=""></div>'+
+      '<div class="crop-ctrls">'+
+        '<button class="crop-ic" onclick="cropGirar()" aria-label="Girar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v4h-4"/></svg></button>'+
+        '<input id="crop-zoom" class="crop-zoom" type="range" min="0" max="1" step="0.01" value="0" oninput="cropZoom(this.value)">'+
+      '</div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark" onclick="cancelarRecorte()">Cancelar</button>'+
+        '<button class="btn btn-primary" id="crop-ok" onclick="confirmarRecorteFoto()">Usar foto</button></div></div>';
+    abrirModal(html);
+    input.value="";
+    var img = document.getElementById("crop-img");
+    if(cropper){ try{ cropper.destroy(); }catch(e){} cropper=null; }
+    cropper = new Cropper(img, {
+      aspectRatio: 1, viewMode: 1, dragMode: "move", autoCropArea: 1,
+      background: false, movable: true, zoomable: true, guides: true,
+      cropBoxMovable: false, cropBoxResizable: false, toggleDragModeOnDblclick: false
+    });
+  };
+  window.cropZoom = function(v){ if(cropper) cropper.zoomTo(Number(v)*2.5); };
+  window.cropGirar = function(){ if(cropper) cropper.rotate(90); };
+  window.cancelarRecorte = function(){
+    if(cropper){ try{ cropper.destroy(); }catch(e){} cropper=null; }
+    if(cropObjectUrl){ try{ URL.revokeObjectURL(cropObjectUrl); }catch(e){} cropObjectUrl=null; }
+    document.getElementById("modal-overlay").hidden=true;
+  };
+  window.confirmarRecorteFoto = function(){
+    if(!cropper) return;
+    var btn=document.getElementById("crop-ok"); if(btn){ btn.disabled=true; btn.textContent="Enviando..."; }
+    var canvas = cropper.getCroppedCanvas({ width:512, height:512, imageSmoothingQuality:"high", fillColor:"#0e141a" });
+    canvas.toBlob(function(blob){
+      if(!blob){ toast("Não consegui processar a imagem."); if(btn){btn.disabled=false;btn.textContent="Usar foto";} return; }
+      uploadFotoBlob(blob);
+    }, "image/jpeg", 0.9);
+  };
+  async function uploadFotoBlob(blob){
     toast("Enviando foto...");
     try{
       var sess = await sb.auth.getSession();
       var uid = sess.data.session && sess.data.session.user && sess.data.session.user.id;
       if(!uid) throw new Error("sem sessão");
-      var ext = (file.name.split(".").pop()||"jpg").toLowerCase();
-      var caminho = uid + "/foto-" + Date.now() + "." + ext;
-      var up = await sb.storage.from("fotos-alunos").upload(caminho, file, { upsert:true });
+      var caminho = uid + "/foto-" + Date.now() + ".jpg";
+      var up = await sb.storage.from("fotos-alunos").upload(caminho, blob, { upsert:true, contentType:"image/jpeg" });
       if(up.error) throw up.error;
       var url = sb.storage.from("fotos-alunos").getPublicUrl(caminho).data.publicUrl;
       var r = await sb.rpc("definir_foto_aluno", { p_url: url });
       if(r.error) throw r.error;
       meuFotoUrl = url;
+      cancelarRecorte();
       renderShell(); ir("perfil");
       toast("Foto atualizada!");
-    }catch(err){ console.error(err); toast("Não consegui enviar a foto. Tente de novo."); }
-    input.value="";
-  };
+    }catch(err){ console.error(err); toast("Não consegui enviar a foto. Tente de novo.");
+      var b=document.getElementById("crop-ok"); if(b){ b.disabled=false; b.textContent="Usar foto"; } }
+  }
   window.removerFotoAluno = async function(){
     try{
       var r = await sb.rpc("definir_foto_aluno", { p_url: null });
