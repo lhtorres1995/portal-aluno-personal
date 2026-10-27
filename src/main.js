@@ -35,6 +35,17 @@ import './styles.css';
   function dataLongaBR(d){ return capitalizar(DIAS[d.getDay()])+", "+d.getDate()+" de "+MESES[d.getMonth()]+" de "+d.getFullYear(); }
   function iniciais(nome){ var p=(nome||"").trim().split(/\s+/); if(!p[0])return"A"; return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
   function avatarInner(){ return meuFotoUrl ? '<img class="avatar-img" src="'+meuFotoUrl+'" alt="">' : iniciais(meuNome); }
+  // Marca exibida no portal: logo do personal (se houver) ou a LT360.
+  function brandLogo(extraCls){
+    return logoPersonal
+      ? '<img class="logo-img '+(extraCls||'')+' logo-custom" src="'+logoPersonal+'" alt="'+nomePersonal+'">'
+      : '<img class="logo-img '+(extraCls||'')+'" src="/logo_lt360.png" alt="LT360">';
+  }
+  function logoPersonalBox(){
+    return logoPersonal
+      ? '<span class="avatar avatar-foto logo-av"><img class="logo-av-img" src="'+logoPersonal+'" alt=""></span>'
+      : '<span class="avatar avatar-foto">'+iniciais(nomePersonal)+'</span>';
+  }
   function toast(msg){
     var t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
     clearTimeout(t.__t); t.__t=setTimeout(function(){ t.classList.remove("show"); },2200);
@@ -399,6 +410,8 @@ import './styles.css';
   function renderShell(){
     aplicarSino(document.getElementById("btn-bell"));
     var _ta=document.getElementById("topbar-avatar"); if(_ta) _ta.innerHTML=avatarInner();
+    var _sl=document.querySelector(".sidebar-logo");
+    if(_sl) _sl.innerHTML = brandLogo("") + '<div class="brand-sub">PORTAL DO ALUNO</div>';
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){
       return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
     }).join("");
@@ -406,7 +419,7 @@ import './styles.css';
       '<button class="perfil-link" onclick="ir(\'perfil\')"><span class="avatar avatar-foto">'+avatarInner()+'</span>'+
         '<span class="perfil-link-txt"><b>'+meuNome+'</b><span>Ver perfil '+IC.chevR+'</span></span></button>'+
       '<div class="personal-box"><div class="personal-cap">Seu personal</div>'+
-        '<div class="personal-row"><span class="avatar avatar-foto">'+iniciais(nomePersonal)+'</span>'+
+        '<div class="personal-row">'+logoPersonalBox()+
         '<span class="personal-txt"><b>'+nomePersonal+'</b><span>Personal Trainer</span></span></div></div>';
     document.getElementById("bottomnav").innerHTML = NAV.map(function(n){
       return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>';
@@ -417,7 +430,7 @@ import './styles.css';
     var el=document.getElementById("m-header");
     if(tabAtual==="inicio"){
       el.className="m-header m-header-inicio";
-      el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
+      el.innerHTML=brandLogo("logo-img-m")+
         '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
         '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div></div>';
     } else {
