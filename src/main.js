@@ -34,11 +34,14 @@ import './styles.css';
   function diaSemanaLabel(iso){ return DIAS[new Date(iso+"T00:00:00").getDay()]; }
   function dataLongaBR(d){ return capitalizar(DIAS[d.getDay()])+", "+d.getDate()+" de "+MESES[d.getMonth()]+" de "+d.getFullYear(); }
   function iniciais(nome){ var p=(nome||"").trim().split(/\s+/); if(!p[0])return"A"; return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
-  function avatarInner(){ return meuFotoUrl ? '<img class="avatar-img" src="'+meuFotoUrl+'" alt="">' : iniciais(meuNome); }
+  // Escapa dados de usuário antes de inserir no HTML (proteção contra XSS).
+  var ESC_MAP={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ESC_MAP[c];}); }
+  function avatarInner(){ return meuFotoUrl ? '<img class="avatar-img" src="'+esc(meuFotoUrl)+'" alt="">' : iniciais(meuNome); }
   // Logo do personal (se houver) ou iniciais, exibida na caixa "Seu personal".
   function logoPersonalBox(){
     return logoPersonal
-      ? '<span class="avatar avatar-foto logo-av"><img class="logo-av-img" src="'+logoPersonal+'" alt=""></span>'
+      ? '<span class="avatar avatar-foto logo-av"><img class="logo-av-img" src="'+esc(logoPersonal)+'" alt=""></span>'
       : '<span class="avatar avatar-foto">'+iniciais(nomePersonal)+'</span>';
   }
   function toast(msg){
@@ -297,7 +300,7 @@ import './styles.css';
   }
   function enriquecer(a){
     return { id:a.id, data:a.data, hora:a.hora, status:a.status,
-      titulo:labelTipo(meuTreinoTipo), sub:"Com "+nomePersonal, local:meuTreinoLocal, tipo:meuTreinoTipo,
+      titulo:labelTipo(meuTreinoTipo), sub:"Com "+esc(nomePersonal), local:esc(meuTreinoLocal), tipo:meuTreinoTipo,
       statusLabel:labelStatusAula(a.status), checkinEm:a.checkinEm, checkinOrigem:a.checkinOrigem };
   }
   function horaCheckin(iso){
@@ -410,10 +413,10 @@ import './styles.css';
     }).join("");
     document.getElementById("sidebar-foot").innerHTML =
       '<button class="perfil-link" onclick="ir(\'perfil\')"><span class="avatar avatar-foto">'+avatarInner()+'</span>'+
-        '<span class="perfil-link-txt"><b>'+meuNome+'</b><span>Ver perfil '+IC.chevR+'</span></span></button>'+
+        '<span class="perfil-link-txt"><b>'+esc(meuNome)+'</b><span>Ver perfil '+IC.chevR+'</span></span></button>'+
       '<div class="personal-box"><div class="personal-cap">Seu personal</div>'+
         '<div class="personal-row">'+logoPersonalBox()+
-        '<span class="personal-txt"><b>'+nomePersonal+'</b><span>Personal Trainer</span></span></div></div>';
+        '<span class="personal-txt"><b>'+esc(nomePersonal)+'</b><span>Personal Trainer</span></span></div></div>';
     document.getElementById("bottomnav").innerHTML = NAV.map(function(n){
       return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>';
     }).join("");
@@ -448,7 +451,7 @@ import './styles.css';
     return '<div class="aula-item">'+tileTreino(a.tipo)+
       '<div class="aula-item-info"><div class="aula-item-hora">'+a.hora+'</div>'+
       '<div class="aula-item-tit">'+a.titulo+'</div><div class="aula-item-sub">'+a.sub+'</div>'+
-      (comLocal&&a.local?'<div class="aula-item-local">'+IC.pin+a.local+'</div>':'')+selo+'</div>'+
+      (comLocal&&a.local?'<div class="aula-item-local">'+IC.pin+esc(a.local)+'</div>':'')+selo+'</div>'+
       '<div class="aula-item-dir">'+statusBadge(a.statusLabel)+'<span class="chev">'+IC.chevR+'</span></div></div>';
   }
 
@@ -463,7 +466,7 @@ import './styles.css';
             '<div class="prox-info"><div class="prox-dh"><span class="dh-long">'+capitalizar(diaSemanaLabel(D.proxima.data))+', '+fmtDataBR(D.proxima.data).slice(0,5)+' • '+D.proxima.hora+'</span>'+
               '<span class="dh-short">'+fmtDataBR(D.proxima.data).slice(0,5)+' • '+D.proxima.hora+'</span></div>'+
               '<div class="prox-tit">'+D.proxima.titulo+'</div><div class="prox-sub">'+D.proxima.sub+'</div>'+
-              (D.proxima.local?'<div class="prox-local">'+IC.pin+D.proxima.local+'</div>':'')+'</div>'+
+              (D.proxima.local?'<div class="prox-local">'+IC.pin+esc(D.proxima.local)+'</div>':'')+'</div>'+
             '<span class="chev chev-lg">'+IC.chevR+'</span></div>'+
           '<div class="prox-acoes"><button class="btn btn-primary" onclick="ir(\'agenda\')">Ver detalhes</button>'+
             '<button class="btn btn-dark" onclick="solicitarRemarcacao(\''+D.proxima.id+'\')">Remarcar</button>'+
@@ -499,7 +502,7 @@ import './styles.css';
     var heroBtn = meuCheckinToken
       ? '<button class="btn btn-checkin" onclick="abrirCheckin()">'+IC.box+' Meu check-out</button>'
       : '';
-    return '<div class="hero"><div class="hero-txt"><h1>Olá, '+(meuNome.split(" ")[0]||"aluno")+'!</h1><p>Vamos em busca de mais resultados! 💪</p></div>'+heroBtn+'</div>'+
+    return '<div class="hero"><div class="hero-txt"><h1>Olá, '+esc(meuNome.split(" ")[0]||"aluno")+'!</h1><p>Vamos em busca de mais resultados! 💪</p></div>'+heroBtn+'</div>'+
       '<div class="grid-prox">'+proxima+semana+'</div>'+stats+'<div class="grid-2">'+atividades+progresso+'</div>';
   }
   window.abrirCheckin = async function(){
@@ -512,7 +515,7 @@ import './styles.css';
       '<div class="modal-tit">Meu check-out</div>'+
       '<div class="modal-sub">Mostre este QR ao seu personal para finalizar a aula de hoje.</div>'+
       '<div class="qr-panel">'+svg+'</div>'+
-      '<div class="qr-nome">'+meuNome+'</div>'+
+      '<div class="qr-nome">'+esc(meuNome)+'</div>'+
       '<div class="modal-acoes"><button class="btn btn-dark block" onclick="fecharModalSolic()">Fechar</button></div>'+
       '</div>';
     abrirModal(html);
@@ -825,11 +828,11 @@ import './styles.css';
     }
     var html='<div class="pag-modal">'+
       '<div class="modal-tit">Pagamento via Pix</div>'+
-      '<div class="modal-sub">'+c.label+'</div>'+
+      '<div class="modal-sub">'+esc(c.label)+'</div>'+
       '<div class="pag-valor">'+fmtMoeda(c.valor)+'</div>'+
       blocoQR+
       '<div class="pag-pix"><div class="pag-pix-cap">'+(brcode?'Ou pague pela chave':'Chave Pix do seu personal')+'</div>'+
-        '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-pix-key">'+chave+'</span>'+
+        '<div class="pag-pix-row"><span class="pag-pix-key" id="pag-pix-key">'+esc(chave)+'</span>'+
         '<button class="btn btn-dark pag-copy" onclick="copiarTexto(\'pag-pix-key\')">Copiar</button></div></div>'+
       '<div class="pag-hint">'+(brcode?'Escaneie o QR ou cole o código no app do seu banco (o valor já vai preenchido).':'Abra o app do seu banco, escolha <b>Pix por chave</b>, cole a chave e informe o valor acima.')+'</div>'+
       (c.pagoInformado
@@ -871,9 +874,9 @@ import './styles.css';
     var html='<div class="comprovante">'+
       '<div class="modal-tit">Comprovante</div>'+
       '<div class="comp-card"><div class="comp-top"><span class="comp-ok">'+IC.check+'</span>'+
-        '<div><div class="comp-status">Pagamento confirmado</div><div class="comp-ref">'+c.label+'</div></div></div>'+
-        '<div class="comp-linha"><span>Aluno</span><b>'+meuNome+'</b></div>'+
-        '<div class="comp-linha"><span>Personal</span><b>'+nomePersonal+'</b></div>'+
+        '<div><div class="comp-status">Pagamento confirmado</div><div class="comp-ref">'+esc(c.label)+'</div></div></div>'+
+        '<div class="comp-linha"><span>Aluno</span><b>'+esc(meuNome)+'</b></div>'+
+        '<div class="comp-linha"><span>Personal</span><b>'+esc(nomePersonal)+'</b></div>'+
         (c.pagamento?'<div class="comp-linha"><span>Pago em</span><b>'+fmtDataBR(c.pagamento)+'</b></div>':'')+
         '<div class="comp-itens-tit">Serviços prestados</div>'+
         '<div class="comp-itens'+(doReceibo.length>=4?' cols-2':'')+'">'+itens+'</div>'+
@@ -947,14 +950,14 @@ import './styles.css';
         var acao = st==="pago"
           ? '<button class="btn btn-dark btn-pagar" onclick="abrirComprovante(\''+c.id+'\')">Comprovante</button>'
           : '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>';
-        return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+c.label+'</div>'+
+        return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+esc(c.label)+'</div>'+
           '<div class="cobr-val">'+fmtMoeda(c.valor)+'</div>'+
           '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div>'+seloInf+'</div>'+
           '<div class="cobr-dir">'+badgeCobranca(st)+acao+'</div></div>';
       }).join("");
     }
     var pix='<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
-      '<div class="fin-pix-val">'+pixPersonal+'</div></div>';
+      '<div class="fin-pix-val">'+esc(pixPersonal)+'</div></div>';
 
     var bannerVis = finTab==="cobrancas" ? banner : "";
     return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+bannerVis+cobr+pix;
@@ -963,10 +966,10 @@ import './styles.css';
   /* =========================================================================
      TELA: Perfil (real; trocar senha real)
      ========================================================================= */
-  function linhaPerfil(r,v){ return '<div class="perfil-linha"><span class="perfil-rot">'+r+'</span><span class="perfil-val">'+(v||"—")+'</span></div>'; }
+  function linhaPerfil(r,v){ return '<div class="perfil-linha"><span class="perfil-rot">'+r+'</span><span class="perfil-val">'+esc(v||"—")+'</span></div>'; }
   function screenPerfil(){
     var foto = meuFotoUrl
-      ? '<div class="perfil-foto"><img class="avatar-img" src="'+meuFotoUrl+'" alt="Minha foto"></div>'
+      ? '<div class="perfil-foto"><img class="avatar-img" src="'+esc(meuFotoUrl)+'" alt="Minha foto"></div>'
       : '<div class="perfil-foto">'+iniciais(meuNome)+'</div>';
     var acoesFoto = '<div class="perfil-foto-acoes">'+
       '<label class="btn btn-dark perfil-foto-btn">'+(meuFotoUrl?'Trocar foto':'Adicionar foto')+
