@@ -124,6 +124,15 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .card-head h3{font-size:16px;font-weight:700;}
 .link{background:none;border:none;color:var(--teal);font-size:13px;font-weight:600;}
 
+/* ===================== Avaliação física ===================== */
+.aval-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px 16px;margin-bottom:4px;}
+.aval-metrica{display:flex;flex-direction:column;gap:2px;}
+.aval-valor{font-family:var(--fdisp);font-weight:700;font-size:17px;}
+.aval-delta{font-size:11.5px;color:var(--muted);}
+.aval-itens-mini{display:flex;flex-direction:column;gap:3px;margin-top:6px;}
+.aval-item-mini{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;}
+.aval-item-mini>span:last-child{font-weight:600;}
+
 /* badges */
 .badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap;font-family:var(--fbody);}
 .badge-ok{background:var(--green-bg);color:var(--green);}

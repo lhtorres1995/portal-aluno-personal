@@ -129,6 +129,9 @@ import './styles.css';
   var aulas = [];              // reais: {id,data,hora,status}
   var minhasSolicitacoes = []; // reais: {id,aulaId,tipo,dataSugerida,horaSugerida,status,createdAt}
   var minhasCobrancas = [];    // reais: {id,valor,label,status,vencimento,pagamento}
+  var minhasAvaliacoes = [];       // reais: {id,data,observacoes,aulaId}
+  var minhasAvaliacoesItens = [];  // reais: {id,avaliacaoId,metricaId,valor,unidade}
+  var metricasCatalogoAluno = [];  // reais: {id,nome,categoria,unidade}
   var tabAtual = "inicio";
   var aulasTab = "proximas";   // sub-aba da tela Aulas
   var agendaSel = HOJE_STR;    // dia selecionado na Agenda
@@ -299,6 +302,24 @@ import './styles.css';
       }
       minhasCobrancas = pres.error ? [] : (pres.data||[]).map(rowToPagamento);
     } catch(e){ minhasCobrancas = []; }
+
+    // Avaliação física (tolerante: tabelas novas, podem ainda não existir
+    // neste servidor se a migração 0007 do treinapp não tiver sido aplicada).
+    try {
+      var mcRes = await sb.from("metricas_catalogo").select("id, nome_exibicao, categoria, unidade_padrao");
+      metricasCatalogoAluno = mcRes.error ? [] : (mcRes.data||[]).map(function(r){
+        return { id:r.id, nome:r.nome_exibicao, categoria:r.categoria, unidade:r.unidade_padrao };
+      });
+      var avRes = await sb.from("avaliacoes_fisicas").select("id, data_avaliacao, observacoes, aula_id")
+        .eq("aluno_id", meuAlunoId).order("data_avaliacao", { ascending: false });
+      minhasAvaliacoes = avRes.error ? [] : (avRes.data||[]).map(function(r){
+        return { id:r.id, data:r.data_avaliacao, observacoes:r.observacoes||"", aulaId:r.aula_id||null };
+      });
+      var aviRes = await sb.from("avaliacoes_fisicas_itens").select("id, avaliacao_id, metrica_id, valor, unidade");
+      minhasAvaliacoesItens = aviRes.error ? [] : (aviRes.data||[]).map(function(r){
+        return { id:r.id, avaliacaoId:r.avaliacao_id, metricaId:r.metrica_id, valor:Number(r.valor), unidade:r.unidade };
+      });
+    } catch(e){ metricasCatalogoAluno = []; minhasAvaliacoes = []; minhasAvaliacoesItens = []; }
   }
   function rowToPagamento(r){
     return { id:r.id, valor:Number(r.valor||0),
@@ -433,7 +454,7 @@ import './styles.css';
   var NAV = [
     {id:"inicio",label:"Início",ic:"home"},{id:"aulas",label:"Aulas",ic:"aulas"},
     {id:"agenda",label:"Agenda",ic:"agenda"},{id:"solicitacoes",label:"Solicitações",ic:"mail"},
-    {id:"financeiro",label:"Financeiro",ic:"financeiro"}
+    {id:"financeiro",label:"Financeiro",ic:"financeiro"},{id:"avaliacao",label:"Avaliação",ic:"trophy"}
   ];
   var TIPO = { forca:{ic:"dumbbell",tile:"tile-graf"}, funcional:{ic:"running",tile:"tile-azul"}, cardio:{ic:"heart",tile:"tile-vermelho"} };
 
@@ -1138,9 +1159,97 @@ import './styles.css';
   };
 
   /* =========================================================================
+     TELA: Avaliação física (real; só leitura — lançada pelo personal)
+     ========================================================================= */
+  function metricaAlunoInfo(id){
+    return metricasCatalogoAluno.filter(function(x){ return x.id===id; })[0] || { nome:"Métrica", unidade:"" };
+  }
+  function itensDaAvaliacaoAluno(avaliacaoId){
+    return minhasAvaliacoesItens.filter(function(it){ return it.avaliacaoId===avaliacaoId; });
+  }
+  // Gráfico de evolução simples (sem lib externa): polilinha + pontos, cor
+  // única e neutra (var(--teal)) — nunca verde/vermelho, porque uma métrica
+  // subir ou cair não é por si só "bom" ou "ruim" (depende do objetivo do aluno).
+  function svgEvolucao(pontos){
+    var w=300, h=90, padX=12, padY=16;
+    var valores = pontos.map(function(p){ return p.valor; });
+    var min = Math.min.apply(null, valores), max = Math.max.apply(null, valores);
+    if (min === max){ min -= 1; max += 1; }
+    var n = pontos.length;
+    function x(i){ return padX + (n===1 ? (w-2*padX)/2 : i*(w-2*padX)/(n-1)); }
+    function y(v){ return (h-padY) - (v-min)*(h-padY-6)/(max-min); }
+    var pts = pontos.map(function(p,i){ return x(i)+","+y(p.valor); }).join(" ");
+    var dots = pontos.map(function(p,i){ return '<circle cx="'+x(i)+'" cy="'+y(p.valor)+'" r="3" fill="var(--teal)"></circle>'; }).join("");
+    var labels = pontos.map(function(p,i){ return '<text x="'+x(i)+'" y="'+(h-3)+'" font-size="8" fill="var(--muted)" text-anchor="middle">'+fmtDataBR(p.data).slice(0,5)+'</text>'; }).join("");
+    return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:90px;display:block;">'+
+      '<polyline points="'+pts+'" fill="none" stroke="var(--teal)" stroke-width="2"></polyline>'+dots+labels+'</svg>';
+  }
+  function screenAvaliacao(){
+    if (minhasAvaliacoes.length===0){
+      return '<div class="only-desktop pg-head"><h1>Avaliação física</h1></div>'+
+        '<div class="card" style="text-align:center;padding:28px 16px;">'+
+        '<div class="section-title">Nenhuma avaliação ainda</div>'+
+        '<div class="cobr-det">Seu personal ainda não registrou nenhuma avaliação física. Quando ele registrar, ela aparece aqui.</div></div>';
+    }
+    var ordenadas = minhasAvaliacoes.slice().sort(function(a,b){ return a.data < b.data ? 1 : -1; });
+    var ultima = ordenadas[0];
+    var anterior = ordenadas[1] || null;
+    var itensUltima = itensDaAvaliacaoAluno(ultima.id);
+    var itensAnterior = anterior ? itensDaAvaliacaoAluno(anterior.id) : [];
+
+    var html = '<div class="only-desktop pg-head"><h1>Avaliação física</h1></div>';
+
+    html += '<h3 class="section-title">Última avaliação — '+fmtDataBR(ultima.data)+'</h3>';
+    html += '<div class="card"><div class="aval-grid">';
+    itensUltima.forEach(function(it){
+      var m = metricaAlunoInfo(it.metricaId);
+      var ant = itensAnterior.filter(function(x){ return x.metricaId===it.metricaId; })[0];
+      var deltaTxt = "";
+      if (ant){
+        var delta = it.valor - ant.valor;
+        deltaTxt = '<span class="aval-delta">'+(delta>0?"+":"")+(Math.round(delta*100)/100)+' '+esc(m.unidade)+' desde a avaliação anterior</span>';
+      }
+      html += '<div class="aval-metrica"><span class="cobr-det">'+esc(m.nome)+'</span><span class="aval-valor">'+it.valor+' '+esc(m.unidade)+'</span>'+deltaTxt+'</div>';
+    });
+    html += '</div>';
+    if (ultima.observacoes) html += '<div class="cobr-det" style="margin-top:8px;">'+esc(ultima.observacoes)+'</div>';
+    html += '</div>';
+
+    // Evolução: uma métrica só entra no gráfico se tiver pelo menos 2 pontos no histórico.
+    var contagem = {};
+    minhasAvaliacoesItens.forEach(function(it){ contagem[it.metricaId] = (contagem[it.metricaId]||0)+1; });
+    var metricasComEvolucao = Object.keys(contagem).filter(function(id){ return contagem[id] >= 2; });
+    if (metricasComEvolucao.length){
+      html += '<h3 class="section-title">Evolução</h3>';
+      metricasComEvolucao.forEach(function(metricaId){
+        var pontos = ordenadas.slice().reverse().map(function(av){
+          var it = itensDaAvaliacaoAluno(av.id).filter(function(x){ return x.metricaId===metricaId; })[0];
+          return it ? { data: av.data, valor: it.valor } : null;
+        }).filter(Boolean);
+        if (pontos.length < 2) return;
+        var m = metricaAlunoInfo(metricaId);
+        html += '<div class="card"><div class="cobr-det" style="margin-bottom:6px;"><b>'+esc(m.nome)+'</b> ('+esc(m.unidade)+')</div>'+svgEvolucao(pontos)+'</div>';
+      });
+    }
+
+    html += '<h3 class="section-title">Histórico completo</h3>';
+    html += ordenadas.map(function(av){
+      var itens = itensDaAvaliacaoAluno(av.id);
+      var corpo = itens.map(function(it){
+        var m = metricaAlunoInfo(it.metricaId);
+        return '<div class="aval-item-mini"><span class="cobr-det">'+esc(m.nome)+'</span><span>'+it.valor+' '+esc(m.unidade)+'</span></div>';
+      }).join("");
+      return '<div class="card"><div class="cobr-det"><b>'+fmtDataBR(av.data)+'</b></div><div class="aval-itens-mini">'+corpo+'</div>'+
+        (av.observacoes ? '<div class="cobr-det" style="margin-top:4px;">'+esc(av.observacoes)+'</div>' : '')+'</div>';
+    }).join("");
+
+    return html;
+  }
+
+  /* =========================================================================
      Navegação
      ========================================================================= */
-  var SCREENS={ inicio:screenInicio, aulas:screenAulas, agenda:screenAgenda, solicitacoes:screenSolic, financeiro:screenFinanceiro, perfil:screenPerfil };
+  var SCREENS={ inicio:screenInicio, aulas:screenAulas, agenda:screenAgenda, solicitacoes:screenSolic, financeiro:screenFinanceiro, perfil:screenPerfil, avaliacao:screenAvaliacao };
   window.ir = function(id){
     tabAtual=id; document.body.setAttribute("data-tab",id);
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){ return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>'; }).join("");
