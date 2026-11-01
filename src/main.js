@@ -315,10 +315,18 @@ import './styles.css';
       minhasAvaliacoes = avRes.error ? [] : (avRes.data||[]).map(function(r){
         return { id:r.id, data:r.data_avaliacao, observacoes:r.observacoes||"", aulaId:r.aula_id||null };
       });
-      var aviRes = await sb.from("avaliacoes_fisicas_itens").select("id, avaliacao_id, metrica_id, valor, unidade");
-      minhasAvaliacoesItens = aviRes.error ? [] : (aviRes.data||[]).map(function(r){
-        return { id:r.id, avaliacaoId:r.avaliacao_id, metricaId:r.metrica_id, valor:Number(r.valor), unidade:r.unidade };
-      });
+      // Filtra explicitamente pelas próprias avaliações (defesa em profundidade
+      // além da RLS, mesmo padrão já usado acima para aulas/pagamentos).
+      var meusIdsAvaliacao = minhasAvaliacoes.map(function(a){ return a.id; });
+      if (meusIdsAvaliacao.length){
+        var aviRes = await sb.from("avaliacoes_fisicas_itens").select("id, avaliacao_id, metrica_id, valor, unidade")
+          .in("avaliacao_id", meusIdsAvaliacao);
+        minhasAvaliacoesItens = aviRes.error ? [] : (aviRes.data||[]).map(function(r){
+          return { id:r.id, avaliacaoId:r.avaliacao_id, metricaId:r.metrica_id, valor:Number(r.valor), unidade:r.unidade };
+        });
+      } else {
+        minhasAvaliacoesItens = [];
+      }
     } catch(e){ metricasCatalogoAluno = []; minhasAvaliacoes = []; minhasAvaliacoesItens = []; }
   }
   function rowToPagamento(r){
