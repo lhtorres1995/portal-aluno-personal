@@ -129,9 +129,9 @@ import './styles.css';
   var aulas = [];              // reais: {id,data,hora,status}
   var minhasSolicitacoes = []; // reais: {id,aulaId,tipo,dataSugerida,horaSugerida,status,createdAt}
   var minhasCobrancas = [];    // reais: {id,valor,label,status,vencimento,pagamento}
-  var minhasAvaliacoes = [];       // reais: {id,data,observacoes,aulaId}
+  var minhasAvaliacoes = [];       // reais: {id,data,observacoes,aulaId,createdAt}
   var minhasAvaliacoesItens = [];  // reais: {id,avaliacaoId,metricaId,valor,unidade}
-  var metricasCatalogoAluno = [];  // reais: {id,nome,categoria,unidade}
+  var metricasCatalogoAluno = [];  // reais: {id,codigo,nome,categoria,unidade}
   var tabAtual = "inicio";
   var aulasTab = "proximas";   // sub-aba da tela Aulas
   var agendaSel = HOJE_STR;    // dia selecionado na Agenda
@@ -139,6 +139,9 @@ import './styles.css';
   var agendaView = "mes";      // mes | semana | lista
   var solicTab = "todas";      // todas | em_analise | aprovada | negada
   var finTab = "cobrancas";    // cobrancas | historico
+  var avalMetricaSel = null;     // id da métrica escolhida no gráfico de evolução (null = decide no 1º render)
+  var avalVerTodas = false;      // "ver todas as medidas" do comparativo expandido
+  var avalExpandidas = {};       // {avaliacaoId: true} — linhas do histórico abertas
 
   /* ---------------- MOCK (marcado) ---------------------------------------- */
   // Solicitações e Financeiro agora são REAIS. Só resta mock o bloco de
@@ -306,14 +309,15 @@ import './styles.css';
     // Avaliação física (tolerante: tabelas novas, podem ainda não existir
     // neste servidor se a migração 0007 do treinapp não tiver sido aplicada).
     try {
-      var mcRes = await sb.from("metricas_catalogo").select("id, nome_exibicao, categoria, unidade_padrao");
+      var mcRes = await sb.from("metricas_catalogo").select("id, metrica_codigo, nome_exibicao, categoria, unidade_padrao")
+        .order("categoria").order("nome_exibicao");
       metricasCatalogoAluno = mcRes.error ? [] : (mcRes.data||[]).map(function(r){
-        return { id:r.id, nome:r.nome_exibicao, categoria:r.categoria, unidade:r.unidade_padrao };
+        return { id:r.id, codigo:r.metrica_codigo, nome:r.nome_exibicao, categoria:r.categoria, unidade:r.unidade_padrao };
       });
-      var avRes = await sb.from("avaliacoes_fisicas").select("id, data_avaliacao, observacoes, aula_id")
+      var avRes = await sb.from("avaliacoes_fisicas").select("id, data_avaliacao, observacoes, aula_id, created_at")
         .eq("aluno_id", meuAlunoId).order("data_avaliacao", { ascending: false });
       minhasAvaliacoes = avRes.error ? [] : (avRes.data||[]).map(function(r){
-        return { id:r.id, data:r.data_avaliacao, observacoes:r.observacoes||"", aulaId:r.aula_id||null };
+        return { id:r.id, data:r.data_avaliacao, observacoes:r.observacoes||"", aulaId:r.aula_id||null, createdAt:r.created_at };
       });
       // Filtra explicitamente pelas próprias avaliações (defesa em profundidade
       // além da RLS, mesmo padrão já usado acima para aulas/pagamentos).
@@ -445,6 +449,7 @@ import './styles.css';
     bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
     chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
     chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>',
+    chevD:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
     pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
     plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
@@ -453,6 +458,25 @@ import './styles.css';
     running:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="5" r="2"/><path d="M14 8l-3 3 2 3 1 5M11 11l-4 1-2 4M13 14l4 1 2 3"/></svg>',
     heart:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 21s-7.5-4.6-10-9.3C.6 8.9 2 5.5 5.2 5.1 7 4.9 8.6 5.9 12 9c3.4-3.1 5-4.1 6.8-3.9C22 5.5 23.4 8.9 22 11.7 19.5 16.4 12 21 12 21z"/></svg>',
     trophy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12v3a6 6 0 0 1-12 0V4z"/><path d="M6 6H3v1a3 3 0 0 0 3 3M18 6h3v1a3 3 0 0 1-3 3M9 15h6M8 20h8M10 15l-.5 5M14 15l.5 5"/></svg>',
+    // Ícones da avaliação física: desenhos próprios, mesmo estilo de traço do
+    // restante do app — inspirados no mockup aprovado, não extraídos dele.
+    // Pacote de ícones oficial (LT360_Icones_Avaliacao_Fisica) — SVGs originais,
+    // reutilizados como vieram (currentColor, stroke-width 1.8).
+    pesoM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 0 1 8 0"/><path d="M6 7h12l3 13H3L6 7Z"/><path d="m12 10 2 3-2 2"/></svg>',
+    alturaM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v18M4 6l3-3 3 3M4 18l3 3 3-3"/><path d="M13 4h7M13 9h4M13 14h7M13 19h4"/></svg>',
+    bracoM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18c2-1 3-4 5-5l2-2 2 2 2-4c.6-1.4 2.7-1.2 3 .3l-1 6c-.6 3-3.5 5-7 5H5Z"/><path d="M9 13c1 1 2 2 4 2"/></svg>',
+    coxaM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h9l1 6-3 5-2 7h-5l1-9-2-5Z"/><path d="M8 9h9"/></svg>',
+    panturrilhaM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3c-1 4-2 6-1 9l2 3-1 6h5l1-6 2-4-1-8"/><path d="M8 12c3 2 5 2 8-1"/></svg>',
+    cinturaM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3c1 4 2 5 2 9s-1 5-2 9M18 3c-1 4-2 5-2 9s1 5 2 9"/><path d="M8 9c2 1 6 1 8 0M8 15c2-1 6-1 8 0"/></svg>',
+    peitoralM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4 3 10l4 11h10l4-11-2-6-5 3-2 4-2-4Z"/><path d="M12 11v10"/></svg>',
+    abdomenM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3 5 9l2 12h10l2-12-2-6"/><path d="M9 8h6M9 12h6M9 16h6M12 8v12"/></svg>',
+    gorduraM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-3 5-7 8-7 12a7 7 0 0 0 14 0c0-4-4-7-7-12Z"/><path d="M9 16l6-6"/><circle cx="9" cy="11" r=".8"/><circle cx="15" cy="16" r=".8"/></svg>',
+    // Genéricos: usados só quando não há ícone específico no pacote (ex.: quadril, métricas custom).
+    percentM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7.5" r="2.3"/><circle cx="17" cy="16.5" r="2.3"/><path d="M18 6 6 18"/></svg>',
+    perimetroM:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 3.3V6M12 18v2.7M3.3 12H6M18 12h2.7"/></svg>',
+    grafico:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V9M12 19V5M20 19v-7"/><path d="M4 19h16"/></svg>',
+    layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 13 9 5 9-5"/></svg>',
+    grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>',
     box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
     arrowDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
     pix:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l3.2 3.2a2 2 0 0 0 1.4.6H18L21.5 9.8a2 2 0 0 1 0 2.8L18 16.1h-1.4a2 2 0 0 0-1.4.6L12 20.9l-3.2-3.2a2 2 0 0 0-1.4-.6H6L2.5 13.6a2 2 0 0 1 0-2.8L6 7.3h1.4a2 2 0 0 0 1.4-.6L12 2.5z"/></svg>',
@@ -1170,89 +1194,283 @@ import './styles.css';
      TELA: Avaliação física (real; só leitura — lançada pelo personal)
      ========================================================================= */
   function metricaAlunoInfo(id){
-    return metricasCatalogoAluno.filter(function(x){ return x.id===id; })[0] || { nome:"Métrica", unidade:"" };
+    return metricasCatalogoAluno.filter(function(x){ return x.id===id; })[0] || { nome:"Métrica", unidade:"", codigo:"" };
   }
   function itensDaAvaliacaoAluno(avaliacaoId){
     return minhasAvaliacoesItens.filter(function(it){ return it.avaliacaoId===avaliacaoId; });
   }
-  // Gráfico de evolução simples (sem lib externa): polilinha + pontos, cor
-  // única e neutra (var(--teal)) — nunca verde/vermelho, porque uma métrica
+  // Mais recente primeiro; em caso de mesma data (duas avaliações no mesmo
+  // dia) desempata por created_at — nunca por um horário inventado.
+  function compararAvaliacoesDesc(a,b){
+    if (a.data !== b.data) return a.data < b.data ? 1 : -1;
+    var ca = a.createdAt || "", cb = b.createdAt || "";
+    if (ca !== cb) return ca < cb ? 1 : -1;
+    return 0;
+  }
+  function dataLocalDeISO(iso){
+    try{ return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date(iso)); }
+    catch(e){ return null; }
+  }
+  function horaLocalDeISO(iso){
+    try{ return new Date(iso).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit",timeZone:"America/Sao_Paulo"}); }
+    catch(e){ return ""; }
+  }
+  // Só mostramos horário quando ele é confiável: created_at (quando a
+  // avaliação foi de fato lançada no sistema) cai no mesmo dia-calendário que
+  // data_avaliacao (o dia a que ela se refere). Se foi lançada com data
+  // retroativa, não sabemos a que horas aconteceu — mostramos só a data.
+  function rotuloDataAvaliacao(av){
+    var dataBR = fmtDataBR(av.data);
+    if (av.createdAt && dataLocalDeISO(av.createdAt) === av.data) return dataBR + " às " + horaLocalDeISO(av.createdAt);
+    return dataBR;
+  }
+  function fmtNumPt(v){
+    var n = Math.round(Number(v)*100)/100;
+    return n.toString().replace(".", ",");
+  }
+  // Ícone específico por código quando o pacote oferece um; cai para o
+  // genérico de perímetro (quadril, custom) ou de bioimpedância (custom).
+  var ICONE_POR_CODIGO = {
+    peso: "pesoM", altura: "alturaM",
+    braco_direito: "bracoM", braco_esquerdo: "bracoM",
+    coxa_direita: "coxaM", coxa_esquerda: "coxaM",
+    panturrilha_direita: "panturrilhaM", panturrilha_esquerda: "panturrilhaM",
+    cintura_escapular: "cinturaM", peitoral: "peitoralM", abdomen: "abdomenM",
+    percentual_gordura_corporal: "gorduraM"
+  };
+  function iconParaMetrica(m){
+    if (!m) return IC.percentM;
+    var chave = ICONE_POR_CODIGO[m.codigo];
+    if (chave) return IC[chave];
+    if (m.categoria === "perimetro") return IC.perimetroM;
+    return IC.percentM; // bioimpedância / custom sem ícone específico
+  }
+  // "Principais medidas": peso e altura sempre aparecem (com placeholder se
+  // não lançados nesta avaliação) + até 2 outras métricas realmente medidas,
+  // priorizando categoria (peso_altura > perímetro > bioimpedância > custom)
+  // e depois nome — mesma prioridade usada no catálogo.
+  function principaisMetricasAvaliacao(itens){
+    var ordem = { peso_altura:0, perimetro:1, bioimpedancia:2, custom:3 };
+    var porMetricaId = {};
+    itens.forEach(function(it){ porMetricaId[it.metricaId] = it; });
+    var destaque = [];
+    ["peso","altura"].forEach(function(cod){
+      var m = metricasCatalogoAluno.filter(function(x){ return x.codigo===cod; })[0];
+      if (!m) return;
+      destaque.push({ metrica:m, item: porMetricaId[m.id] || null });
+    });
+    var jaUsados = {};
+    destaque.forEach(function(d){ jaUsados[d.metrica.id] = true; });
+    var outros = itens.filter(function(it){ return !jaUsados[it.metricaId]; }).sort(function(a,b){
+      var ma = metricaAlunoInfo(a.metricaId), mb = metricaAlunoInfo(b.metricaId);
+      var oa = ordem[ma.categoria]===undefined?9:ordem[ma.categoria], ob = ordem[mb.categoria]===undefined?9:ordem[mb.categoria];
+      if (oa !== ob) return oa - ob;
+      return ma.nome < mb.nome ? -1 : (ma.nome > mb.nome ? 1 : 0);
+    });
+    outros.slice(0,2).forEach(function(it){ destaque.push({ metrica: metricaAlunoInfo(it.metricaId), item: it }); });
+    return destaque;
+  }
+  function cardMetricaDestaque(d, itensAnterior){
+    var m = d.metrica, it = d.item, icone = iconParaMetrica(m);
+    if (!it){
+      return '<div class="aval-dcard"><span class="aval-dcard-ic">'+icone+'</span><span class="aval-dcard-label">'+esc(m.nome)+'</span>'+
+        '<span class="aval-dcard-valor aval-dcard-vazio">—</span><span class="aval-dcard-delta neutro">Não informado</span></div>';
+    }
+    var ant = itensAnterior.filter(function(x){ return x.metricaId===it.metricaId; })[0];
+    var deltaHtml = '<span class="aval-dcard-delta neutro">Primeira medição</span>';
+    if (ant){
+      var delta = it.valor - ant.valor;
+      deltaHtml = Math.abs(delta) < 0.005
+        ? '<span class="aval-dcard-delta neutro">Sem alteração</span>'
+        : '<span class="aval-dcard-delta">'+(delta>0?"+":"")+fmtNumPt(delta)+' '+esc(it.unidade)+'</span>';
+    }
+    return '<div class="aval-dcard"><span class="aval-dcard-ic">'+icone+'</span><span class="aval-dcard-label">'+esc(m.nome)+'</span>'+
+      '<span class="aval-dcard-valor">'+fmtNumPt(it.valor)+' '+esc(it.unidade)+'</span>'+deltaHtml+'</div>';
+  }
+  function cardMedidaComparativo(it, itensAnterior){
+    var m = metricaAlunoInfo(it.metricaId);
+    var ant = itensAnterior.filter(function(x){ return x.metricaId===it.metricaId; })[0];
+    var deltaHtml = '<span class="aval-comp-delta neutro">Primeira medição</span>';
+    if (ant){
+      var delta = it.valor - ant.valor;
+      deltaHtml = Math.abs(delta) < 0.005
+        ? '<span class="aval-comp-delta neutro">—</span>'
+        : '<span class="aval-comp-delta">'+(delta>0?"+":"")+fmtNumPt(delta)+' '+esc(it.unidade)+'</span>';
+    }
+    return '<div class="aval-comp-card"><span class="cobr-det">'+esc(m.nome)+'</span>'+
+      '<span class="aval-comp-valor">'+fmtNumPt(it.valor)+' '+esc(it.unidade)+'</span>'+deltaHtml+'</div>';
+  }
+  // Gráfico de evolução: área + linha + grid + rótulo de valor em cada ponto.
+  // Cor única e neutra (var(--teal)) — nunca verde/vermelho: uma métrica
   // subir ou cair não é por si só "bom" ou "ruim" (depende do objetivo do aluno).
-  function svgEvolucao(pontos){
-    var w=300, h=90, padX=12, padY=16;
+  // Rótulo com "chip" de fundo (evita colidir visualmente com grade/linha/eixo
+  // atrás dele — o rect é opaco e desenhado por cima de tudo, então sempre
+  // cobre o que estiver embaixo do texto).
+  function svgChip(px, py, texto, anchor, opts){
+    opts = opts || {};
+    var fontSize = opts.fontSize || 11;
+    var peso = opts.bold ? 700 : 600;
+    var w = Math.max(fontSize*1.6, texto.length*fontSize*0.62 + 10);
+    var h = fontSize + 7;
+    var rectX = anchor==="start" ? px-4 : (anchor==="end" ? px-w+4 : px-w/2);
+    var rectY = py - fontSize - 1;
+    return '<rect x="'+rectX+'" y="'+rectY+'" width="'+w+'" height="'+h+'" rx="4" fill="'+(opts.fill||"var(--card)")+'"></rect>'+
+      '<text x="'+px+'" y="'+py+'" font-size="'+fontSize+'" font-weight="'+peso+'" fill="'+(opts.color||"var(--fg)")+'" text-anchor="'+anchor+'">'+esc(texto)+'</text>';
+  }
+  function svgEvolucao(pontos, unidade, gradId){
+    var w=640, h=230, padL=44, padR=20, padT=30, padB=44;
+    var areaW = w-padL-padR, areaH = h-padT-padB;
     var valores = pontos.map(function(p){ return p.valor; });
     var min = Math.min.apply(null, valores), max = Math.max.apply(null, valores);
     if (min === max){ min -= 1; max += 1; }
+    var folga = (max-min)*0.15; min -= folga; max += folga;
     var n = pontos.length;
-    function x(i){ return padX + (n===1 ? (w-2*padX)/2 : i*(w-2*padX)/(n-1)); }
-    function y(v){ return (h-padY) - (v-min)*(h-padY-6)/(max-min); }
-    var pts = pontos.map(function(p,i){ return x(i)+","+y(p.valor); }).join(" ");
-    var dots = pontos.map(function(p,i){ return '<circle cx="'+x(i)+'" cy="'+y(p.valor)+'" r="3" fill="var(--teal)"></circle>'; }).join("");
-    var labels = pontos.map(function(p,i){ return '<text x="'+x(i)+'" y="'+(h-3)+'" font-size="8" fill="var(--muted)" text-anchor="middle">'+fmtDataBR(p.data).slice(0,5)+'</text>'; }).join("");
-    return '<svg viewBox="0 0 '+w+' '+h+'" style="width:100%;height:90px;display:block;">'+
-      '<polyline points="'+pts+'" fill="none" stroke="var(--teal)" stroke-width="2"></polyline>'+dots+labels+'</svg>';
+    function x(i){ return padL + (n===1 ? areaW/2 : i*areaW/(n-1)); }
+    function y(v){ return padT + (max-v)/(max-min)*areaH; }
+
+    var nTicks = 5, grid = "", labelsY = "";
+    for (var t=0;t<nTicks;t++){
+      var v = max - (max-min)*t/(nTicks-1);
+      var yy = padT + t*areaH/(nTicks-1);
+      grid += '<line x1="'+padL+'" y1="'+yy+'" x2="'+(w-padR)+'" y2="'+yy+'" stroke="var(--card-line)" stroke-width="1"></line>';
+      labelsY += '<text x="'+(padL-8)+'" y="'+(yy+3)+'" font-size="10" fill="var(--muted)" text-anchor="end">'+fmtNumPt(v)+'</text>';
+    }
+
+    var linePts = pontos.map(function(p,i){ return x(i)+","+y(p.valor); }).join(" ");
+    var areaPts = linePts+" "+x(n-1)+","+(h-padB)+" "+x(0)+","+(h-padB);
+
+    // Rótulos do eixo X: se os pontos estiverem muito próximos, mostra só
+    // alguns (sempre o primeiro e o último) para não empilhar texto.
+    var minSpacing = 58;
+    var step = n>1 ? Math.max(1, Math.ceil(minSpacing / (areaW/(n-1)))) : 1;
+
+    var dots="", valueLabels="", xLabels="";
+    pontos.forEach(function(p,i){
+      var px=x(i), py=y(p.valor);
+      var rotulo = rotuloDataAvaliacao(p.av);
+      var tituloAcessivel = rotulo+": "+fmtNumPt(p.valor)+" "+unidade;
+      dots += '<circle cx="'+px+'" cy="'+py+'" r="5" tabindex="0" fill="var(--teal)" stroke="var(--bg)" stroke-width="2"><title>'+esc(tituloAcessivel)+'</title></circle>';
+      var anchorV = i===0 ? "start" : (i===n-1 ? "end" : "middle");
+      valueLabels += svgChip(px, py-14, fmtNumPt(p.valor)+" "+unidade, anchorV, { bold:true });
+      if (i===0 || i===n-1 || i%step===0){
+        var partes = rotulo.split(" às ");
+        var anchorX = i===0 ? "start" : (i===n-1 ? "end" : "middle");
+        xLabels += '<text x="'+px+'" y="'+(h-padB+17)+'" font-size="10" fill="var(--muted)" text-anchor="'+anchorX+'">'+esc(partes[0])+'</text>';
+        if (partes[1]) xLabels += '<text x="'+px+'" y="'+(h-padB+30)+'" font-size="10" fill="var(--muted)" text-anchor="'+anchorX+'">'+esc(partes[1])+'</text>';
+      }
+    });
+
+    return '<svg class="aval-chart" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid meet" style="width:100%;height:230px;display:block;" role="group" aria-label="Gráfico de evolução de '+esc(unidade)+'">'+
+      '<defs><linearGradient id="'+gradId+'" x1="0" y1="0" x2="0" y2="1">'+
+      '<stop offset="0%" stop-color="var(--teal)" stop-opacity="0.35"></stop>'+
+      '<stop offset="100%" stop-color="var(--teal)" stop-opacity="0"></stop></linearGradient></defs>'+
+      grid+labelsY+
+      '<polygon points="'+areaPts+'" fill="url(#'+gradId+')"></polygon>'+
+      '<polyline points="'+linePts+'" fill="none" stroke="var(--teal)" stroke-width="2.5"></polyline>'+
+      dots+valueLabels+xLabels+'</svg>';
+  }
+  function cardHistoricoAluno(av){
+    var itens = itensDaAvaliacaoAluno(av.id);
+    var aberto = !!avalExpandidas[av.id];
+    var pesoIt = itens.filter(function(it){ return metricaAlunoInfo(it.metricaId).codigo==="peso"; })[0];
+    var alturaIt = itens.filter(function(it){ return metricaAlunoInfo(it.metricaId).codigo==="altura"; })[0];
+    var resumo = [];
+    if (pesoIt) resumo.push("Peso <b>"+fmtNumPt(pesoIt.valor)+" "+esc(pesoIt.unidade)+"</b>");
+    if (alturaIt) resumo.push("Altura <b>"+fmtNumPt(alturaIt.valor)+" "+esc(alturaIt.unidade)+"</b>");
+    resumo.push(itens.length+" medida"+(itens.length===1?"":"s"));
+    var corpo = "";
+    if (aberto){
+      corpo = '<div class="aval-itens-mini">'+itens.map(function(it){
+        var m = metricaAlunoInfo(it.metricaId);
+        return '<div class="aval-item-mini"><span class="cobr-det">'+esc(m.nome)+'</span><span>'+fmtNumPt(it.valor)+' '+esc(it.unidade)+'</span></div>';
+      }).join("")+'</div>'+
+      (av.observacoes ? '<div class="cobr-det" style="margin-top:6px;">'+esc(av.observacoes)+'</div>' : '');
+    }
+    return '<div class="card aval-hist-card" onclick="toggleAvalExpandida(\''+av.id+'\')">'+
+      '<div class="aval-hist-head"><span class="aval-hist-ic">'+IC.agenda+'</span>'+
+      '<div class="aval-hist-info"><div class="aval-hist-data">'+rotuloDataAvaliacao(av)+'</div>'+
+      '<div class="cobr-det">'+(av.aulaId?"Lançada durante uma aula":"Lançada fora de aula")+'</div></div>'+
+      '<div class="aval-hist-resumo only-desktop">'+resumo.join(' <span class="aval-sep">|</span> ')+'</div>'+
+      '<span class="aval-hist-chev'+(aberto?' aberto':'')+'">'+IC.chevD+'</span></div>'+corpo+'</div>';
+  }
+  // Arte do cabeçalho — foto real de halteres (asset local, aprovada pelo
+  // usuário), não a ilustração SVG nem o recorte do mockup. Só aparece no
+  // desktop (o header mobile é outro, genérico).
+  function avalHero(subtitulo){
+    return '<div class="aval-hero only-desktop"><div class="aval-hero-text"><h1>Avaliação física</h1>'+
+      (subtitulo ? '<div class="cobr-det">'+esc(subtitulo)+'</div>' : '')+'</div>'+
+      '<div class="aval-hero-art"><img src="/img/halteres-avaliacao.webp" alt="" aria-hidden="true"></div></div>';
   }
   function screenAvaliacao(){
     if (minhasAvaliacoes.length===0){
-      return '<div class="only-desktop pg-head"><h1>Avaliação física</h1></div>'+
+      return avalHero()+
         '<div class="card" style="text-align:center;padding:28px 16px;">'+
         '<div class="section-title">Nenhuma avaliação ainda</div>'+
         '<div class="cobr-det">Seu personal ainda não registrou nenhuma avaliação física. Quando ele registrar, ela aparece aqui.</div></div>';
     }
-    var ordenadas = minhasAvaliacoes.slice().sort(function(a,b){ return a.data < b.data ? 1 : -1; });
+    var ordenadas = minhasAvaliacoes.slice().sort(compararAvaliacoesDesc);
     var ultima = ordenadas[0];
     var anterior = ordenadas[1] || null;
     var itensUltima = itensDaAvaliacaoAluno(ultima.id);
     var itensAnterior = anterior ? itensDaAvaliacaoAluno(anterior.id) : [];
+    var principais = principaisMetricasAvaliacao(itensUltima);
+    var destaqueIds = {};
+    principais.forEach(function(d){ if (d.item) destaqueIds[d.item.metricaId] = true; });
 
-    var html = '<div class="only-desktop pg-head"><h1>Avaliação física</h1></div>';
+    var html = avalHero("Acompanhe sua evolução e histórico de medidas.");
 
-    html += '<h3 class="section-title">Última avaliação — '+fmtDataBR(ultima.data)+'</h3>';
-    html += '<div class="card"><div class="aval-grid">';
-    itensUltima.forEach(function(it){
-      var m = metricaAlunoInfo(it.metricaId);
-      var ant = itensAnterior.filter(function(x){ return x.metricaId===it.metricaId; })[0];
-      var deltaTxt = "";
-      if (ant){
-        var delta = it.valor - ant.valor;
-        deltaTxt = '<span class="aval-delta">'+(delta>0?"+":"")+(Math.round(delta*100)/100)+' '+esc(m.unidade)+' desde a avaliação anterior</span>';
-      }
-      html += '<div class="aval-metrica"><span class="cobr-det">'+esc(m.nome)+'</span><span class="aval-valor">'+it.valor+' '+esc(m.unidade)+'</span>'+deltaTxt+'</div>';
-    });
+    html += '<h3 class="section-title">Última avaliação — '+rotuloDataAvaliacao(ultima)+'</h3>';
+    html += '<div class="card"><div class="aval-destaque-grid">';
+    principais.forEach(function(d){ html += cardMetricaDestaque(d, itensAnterior); });
     html += '</div>';
-    if (ultima.observacoes) html += '<div class="cobr-det" style="margin-top:8px;">'+esc(ultima.observacoes)+'</div>';
+    if (ultima.observacoes) html += '<div class="cobr-det" style="margin-top:10px;">'+esc(ultima.observacoes)+'</div>';
     html += '</div>';
 
-    // Evolução: uma métrica só entra no gráfico se tiver pelo menos 2 pontos no histórico.
+    // Evolução: só vira opção no seletor a métrica com pelo menos 2 pontos.
     var contagem = {};
     minhasAvaliacoesItens.forEach(function(it){ contagem[it.metricaId] = (contagem[it.metricaId]||0)+1; });
-    var metricasComEvolucao = Object.keys(contagem).filter(function(id){ return contagem[id] >= 2; });
+    var metricasComEvolucao = metricasCatalogoAluno.filter(function(m){ return contagem[m.id] >= 2; });
     if (metricasComEvolucao.length){
-      html += '<h3 class="section-title">Evolução</h3>';
-      metricasComEvolucao.forEach(function(metricaId){
-        var pontos = ordenadas.slice().reverse().map(function(av){
-          var it = itensDaAvaliacaoAluno(av.id).filter(function(x){ return x.metricaId===metricaId; })[0];
-          return it ? { data: av.data, valor: it.valor } : null;
-        }).filter(Boolean);
-        if (pontos.length < 2) return;
-        var m = metricaAlunoInfo(metricaId);
-        html += '<div class="card"><div class="cobr-det" style="margin-bottom:6px;"><b>'+esc(m.nome)+'</b> ('+esc(m.unidade)+')</div>'+svgEvolucao(pontos)+'</div>';
-      });
+      if (!avalMetricaSel || !contagem[avalMetricaSel]){
+        var peso = metricasComEvolucao.filter(function(m){ return m.codigo==="peso"; })[0];
+        avalMetricaSel = (peso || metricasComEvolucao[0]).id;
+      }
+      var metricaAtiva = metricaAlunoInfo(avalMetricaSel);
+      var pontos = ordenadas.slice().reverse().map(function(av){
+        var it = itensDaAvaliacaoAluno(av.id).filter(function(x){ return x.metricaId===avalMetricaSel; })[0];
+        return it ? { av:av, valor:it.valor } : null;
+      }).filter(Boolean);
+      var opcoes = metricasComEvolucao.map(function(m){
+        return '<option value="'+m.id+'"'+(m.id===avalMetricaSel?' selected':'')+'>'+esc(m.nome)+' ('+esc(m.unidade)+')</option>';
+      }).join('');
+      html += '<div class="card"><div class="aval-card-head"><h3 class="section-title" style="margin:0;">Evolução</h3>'+
+        '<select class="aval-select" onchange="setAvalMetrica(this.value)">'+opcoes+'</select></div>'+
+        svgEvolucao(pontos, metricaAtiva.unidade, "avalGrad-"+avalMetricaSel)+'</div>';
     }
 
-    html += '<h3 class="section-title">Histórico completo</h3>';
-    html += ordenadas.map(function(av){
-      var itens = itensDaAvaliacaoAluno(av.id);
-      var corpo = itens.map(function(it){
-        var m = metricaAlunoInfo(it.metricaId);
-        return '<div class="aval-item-mini"><span class="cobr-det">'+esc(m.nome)+'</span><span>'+it.valor+' '+esc(m.unidade)+'</span></div>';
-      }).join("");
-      return '<div class="card"><div class="cobr-det"><b>'+fmtDataBR(av.data)+'</b></div><div class="aval-itens-mini">'+corpo+'</div>'+
-        (av.observacoes ? '<div class="cobr-det" style="margin-top:4px;">'+esc(av.observacoes)+'</div>' : '')+'</div>';
-    }).join("");
+    // Comparativo de medidas: tudo que não entrou no destaque acima.
+    var outrasMedidas = itensUltima.filter(function(it){ return !destaqueIds[it.metricaId]; });
+    if (outrasMedidas.length){
+      var CAP = 6;
+      var mostrarTodas = avalVerTodas || outrasMedidas.length <= CAP;
+      var visiveis = mostrarTodas ? outrasMedidas : outrasMedidas.slice(0, CAP-1);
+      html += '<h3 class="section-title">Comparativo de medidas</h3><div class="cobr-det" style="margin-top:-8px;margin-bottom:10px;">Diferença entre a última e a avaliação anterior.</div>';
+      html += '<div class="aval-comp-grid">';
+      visiveis.forEach(function(it){ html += cardMedidaComparativo(it, itensAnterior); });
+      if (!mostrarTodas){
+        html += '<button type="button" class="aval-vertodas" onclick="toggleAvalVerTodas()">'+IC.grid+'<span>Ver todas as medidas</span></button>';
+      }
+      html += '</div>';
+    }
+
+    html += '<h3 class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">Histórico de avaliações<span class="aval-contador">'+ordenadas.length+' avaliaç'+(ordenadas.length===1?'ão':'ões')+'</span></h3>';
+    html += ordenadas.map(cardHistoricoAluno).join("");
 
     return html;
   }
+  window.setAvalMetrica = function(id){ avalMetricaSel = id; ir("avaliacao"); };
+  window.toggleAvalVerTodas = function(){ avalVerTodas = !avalVerTodas; ir("avaliacao"); };
+  window.toggleAvalExpandida = function(id){ avalExpandidas[id] = !avalExpandidas[id]; ir("avaliacao"); };
 
   /* =========================================================================
      Navegação

@@ -125,13 +125,62 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .link{background:none;border:none;color:var(--teal);font-size:13px;font-weight:600;}
 
 /* ===================== Avaliação física ===================== */
-.aval-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px 16px;margin-bottom:4px;}
-.aval-metrica{display:flex;flex-direction:column;gap:2px;}
-.aval-valor{font-family:var(--fdisp);font-weight:700;font-size:17px;}
-.aval-delta{font-size:11.5px;color:var(--muted);}
-.aval-itens-mini{display:flex;flex-direction:column;gap:3px;margin-top:6px;}
+.aval-destaque-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+.aval-dcard{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-xs);
+  padding:14px;display:flex;flex-direction:column;gap:4px;}
+.aval-dcard-ic{width:30px;height:30px;color:var(--teal);margin-bottom:2px;}
+.aval-dcard-ic svg{width:100%;height:100%;}
+.aval-dcard-label{font-size:12.5px;color:var(--muted);}
+.aval-dcard-valor{font-family:var(--fdisp);font-weight:700;font-size:18px;}
+.aval-dcard-valor.aval-dcard-vazio{color:var(--faint);}
+.aval-dcard-delta{font-size:11.5px;color:var(--teal);font-weight:600;}
+.aval-dcard-delta.neutro{color:var(--muted);font-weight:500;}
+
+.aval-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.aval-select{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-xs);
+  color:var(--fg);font-size:13px;font-weight:600;padding:8px 12px;}
+
+.aval-comp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;}
+.aval-comp-card{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-xs);
+  padding:13px 14px;display:flex;flex-direction:column;gap:3px;}
+.aval-comp-valor{font-family:var(--fdisp);font-weight:700;font-size:15.5px;}
+.aval-comp-delta{font-size:11.5px;color:var(--teal);font-weight:600;}
+.aval-comp-delta.neutro{color:var(--muted);font-weight:500;}
+.aval-vertodas{background:var(--card-soft);border:1px dashed var(--card-line);border-radius:var(--radius-xs);
+  color:var(--teal);font-size:12.5px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:14px;}
+.aval-vertodas svg{width:20px;height:20px;}
+
+.aval-contador{font-size:12px;color:var(--muted);font-weight:600;}
+.aval-hist-card{cursor:pointer;padding:14px 16px;}
+.aval-hist-card+.aval-hist-card{margin-top:10px;}
+.aval-hist-head{display:flex;align-items:center;gap:12px;}
+.aval-hist-ic{width:34px;height:34px;flex:none;border-radius:10px;background:rgba(0,229,215,.12);color:var(--teal);
+  display:flex;align-items:center;justify-content:center;padding:8px;}
+.aval-hist-info{min-width:0;flex:1;}
+.aval-hist-data{font-weight:700;font-size:14px;}
+.aval-hist-resumo{font-size:13px;color:var(--muted);white-space:nowrap;}
+.aval-hist-resumo b{color:var(--fg);font-weight:700;}
+.aval-sep{color:var(--card-line);margin:0 2px;}
+.aval-hist-chev{width:18px;height:18px;color:var(--muted);flex:none;transition:transform .15s ease;}
+.aval-hist-chev.aberto{transform:rotate(180deg);color:var(--teal);}
+.aval-itens-mini{display:flex;flex-direction:column;gap:3px;margin-top:12px;padding-top:12px;border-top:1px solid var(--card-line);}
 .aval-item-mini{display:flex;justify-content:space-between;gap:8px;font-size:13.5px;}
 .aval-item-mini>span:last-child{font-weight:600;}
+.aval-chart circle:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+
+.aval-hero{position:relative;overflow:hidden;border-radius:var(--radius);
+  background:linear-gradient(120deg,var(--bg2) 0%,#0d2b29 55%,#0a3330 100%);
+  border:1px solid var(--card-line);padding:28px 34px;margin-bottom:18px;min-height:150px;
+  display:flex;align-items:center;}
+.aval-hero-text{position:relative;z-index:2;max-width:58%;}
+.aval-hero-text h1{margin:0 0 6px;}
+.aval-hero-text .cobr-det{margin-top:0;}
+.aval-hero-art{position:absolute;right:0;top:0;width:46%;height:100%;pointer-events:none;}
+.aval-hero-art img{width:100%;height:100%;display:block;object-fit:cover;object-position:88% center;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);
+  mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);}
+@media (max-width:1180px){ .aval-hero-art{width:38%;} }
 
 /* badges */
 .badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap;font-family:var(--fbody);}
@@ -366,6 +415,13 @@ body[data-tab="inicio"] .topbanner{display:block;}
   /* no mobile o Início não mostra: semana(anel), últimas atividades, progresso */
   .screen-inicio .semana-card{display:none;}
   .screen-inicio .grid-2{display:none;}
+
+  /* avaliação física: grids mais apertados e cabeçalho do gráfico empilhado */
+  .aval-destaque-grid,.aval-comp-grid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
+  .aval-card-head{flex-direction:column;align-items:stretch;}
+  .aval-select{width:100%;}
+  .aval-hist-head{gap:10px;}
+  .aval-hist-data{font-size:13.5px;}
 
   .prox-tit{font-size:19px;}
   .btn{padding:12px 14px;font-size:13.5px;}
