@@ -15,7 +15,8 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 
 ## Funcionalidades implementadas
 
-- Navegação: Início, Aulas (força/funcional/cardio), Agenda, Solicitações, Financeiro, Perfil.
+- Navegação: Início, Aulas (força/funcional/cardio), Agenda, Solicitações, Financeiro, Avaliação, Perfil.
+- Avaliação física (somente leitura — lançada pelo personal no `treinapp`): cards de destaque da última avaliação com delta neutro (nunca classifica variação como boa/ruim), gráfico único de evolução com seletor de métrica, comparativo de medidas e histórico expansível. Cabeçalho (desktop) com imagem de halteres (`public/img/halteres-avaliacao.webp`).
 - Perfil: foto (crop via `cropperjs`, RPC `definir_foto_aluno`), alteração de senha.
 - Notificações: sino com painel, Web Push (assinatura/cancelamento via `qrcode`-free VAPID flow, RPCs `salvar_push_subscription`/`remover_push_subscription`).
 - PWA instalável com service worker registrado em `src/main.js`.
@@ -42,3 +43,4 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 
 - Todas as RPCs chamadas por este portal (`definir_foto_aluno`, `informar_pagamento`, `remover_push_subscription`, `responder_contraproposta`, `salvar_push_subscription`) existem no projeto Supabase `trainer-flow` e foram **confirmadas por inspeção direta do banco** (não há `.sql` fonte em nenhum repositório — mantidas só no banco).
 - Vínculo deste repo com o projeto `trainer-flow` é **inferido** (mesmas tabelas/RPCs), não confirmado via `.env` (este repo não tem `.env.example`).
+- Avaliação física é lida direto das tabelas `metricas_catalogo`/`avaliacoes_fisicas`/`avaliacoes_fisicas_itens` (sem RPC própria, só SELECT sob RLS); carga tolerante — se as tabelas não existirem no servidor, a tela mostra vazio em vez de quebrar.
