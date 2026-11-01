@@ -176,9 +176,11 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .aval-hero-text{position:relative;z-index:2;max-width:58%;}
 .aval-hero-text h1{margin:0 0 6px;}
 .aval-hero-text .cobr-det{margin-top:0;}
-.aval-hero-art{position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:260px;height:160px;opacity:.9;pointer-events:none;}
-.aval-hero-art svg{width:100%;height:100%;display:block;}
-@media (max-width:1180px){ .aval-hero-art{width:190px;height:130px;right:-20px;} }
+.aval-hero-art{position:absolute;right:0;top:0;width:46%;height:100%;pointer-events:none;}
+.aval-hero-art img{width:100%;height:100%;display:block;object-fit:cover;object-position:88% center;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);
+  mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);}
+@media (max-width:1180px){ .aval-hero-art{width:38%;} }
 
 /* badges */
 .badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap;font-family:var(--fbody);}

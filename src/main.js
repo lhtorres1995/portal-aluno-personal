@@ -1393,32 +1393,13 @@ import './styles.css';
       '<div class="aval-hist-resumo only-desktop">'+resumo.join(' <span class="aval-sep">|</span> ')+'</div>'+
       '<span class="aval-hist-chev'+(aberto?' aberto':'')+'">'+IC.chevD+'</span></div>'+corpo+'</div>';
   }
-  // Arte decorativa de halteres do cabeçalho — SVG próprio (duotone, degradê
-  // escuro + realce teal), não o recorte do mockup (baixa resolução e com
-  // texto sobreposto). Só aparece no desktop (o header mobile é outro, genérico).
-  function svgHalteres(){
-    return '<svg viewBox="0 0 300 180" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">'+
-      '<defs>'+
-        '<linearGradient id="dbBody" x1="0" y1="0" x2="1" y2="1">'+
-          '<stop offset="0%" stop-color="#0e3330"></stop><stop offset="100%" stop-color="#155b54"></stop>'+
-        '</linearGradient>'+
-        '<linearGradient id="dbRim" x1="0" y1="0" x2="1" y2="0">'+
-          '<stop offset="0%" stop-color="var(--teal)" stop-opacity="0"></stop>'+
-          '<stop offset="100%" stop-color="var(--teal)" stop-opacity=".85"></stop>'+
-        '</linearGradient>'+
-      '</defs>'+
-      '<rect x="68" y="82" width="164" height="16" rx="8" fill="url(#dbBody)" stroke="url(#dbRim)" stroke-width="1.5"></rect>'+
-      '<rect x="128" y="86" width="44" height="8" rx="4" fill="var(--teal)" opacity=".45"></rect>'+
-      '<rect x="32" y="48" width="22" height="84" rx="9" fill="url(#dbBody)" stroke="url(#dbRim)" stroke-width="1.5"></rect>'+
-      '<rect x="54" y="60" width="15" height="60" rx="6" fill="url(#dbBody)" stroke="url(#dbRim)" stroke-width="1.5"></rect>'+
-      '<rect x="246" y="48" width="22" height="84" rx="9" fill="url(#dbBody)" stroke="url(#dbRim)" stroke-width="1.5"></rect>'+
-      '<rect x="231" y="60" width="15" height="60" rx="6" fill="url(#dbBody)" stroke="url(#dbRim)" stroke-width="1.5"></rect>'+
-      '</svg>';
-  }
+  // Arte do cabeçalho — foto real de halteres (asset local, aprovada pelo
+  // usuário), não a ilustração SVG nem o recorte do mockup. Só aparece no
+  // desktop (o header mobile é outro, genérico).
   function avalHero(subtitulo){
     return '<div class="aval-hero only-desktop"><div class="aval-hero-text"><h1>Avaliação física</h1>'+
       (subtitulo ? '<div class="cobr-det">'+esc(subtitulo)+'</div>' : '')+'</div>'+
-      '<div class="aval-hero-art">'+svgHalteres()+'</div></div>';
+      '<div class="aval-hero-art"><img src="/img/halteres-avaliacao.webp" alt="" aria-hidden="true"></div></div>';
   }
   function screenAvaliacao(){
     if (minhasAvaliacoes.length===0){
