@@ -169,18 +169,24 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .aval-item-mini>span:last-child{font-weight:600;}
 .aval-chart circle:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
 
-.aval-hero{position:relative;overflow:hidden;border-radius:var(--radius);
-  background:linear-gradient(120deg,var(--bg2) 0%,#0d2b29 55%,#0a3330 100%);
-  border:1px solid var(--card-line);padding:28px 34px;margin-bottom:18px;min-height:150px;
-  display:flex;align-items:center;}
-.aval-hero-text{position:relative;z-index:2;max-width:58%;}
-.aval-hero-text h1{margin:0 0 6px;}
-.aval-hero-text .cobr-det{margin-top:0;}
-.aval-hero-art{position:absolute;right:0;top:0;width:46%;height:100%;pointer-events:none;}
-.aval-hero-art img{width:100%;height:100%;display:block;object-fit:cover;object-position:88% center;
-  -webkit-mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);
-  mask-image:linear-gradient(to right,transparent 0,rgba(0,0,0,.6) 18%,#000 42%);}
-@media (max-width:1180px){ .aval-hero-art{width:38%;} }
+/* O hero engloba o conteúdo funcional que vem logo abaixo do título nos mockups
+   (abas, indicadores ou aviso, dependendo da tela) — não é só uma faixa decorativa.
+   A foto ocupa o painel inteiro (object-fit:cover, sem distorcer); como as fotos
+   finais já vêm com degradê e barra teal embutidos mas numa proporção bem mais
+   larga (~12,3:1) que o painel, usamos object-position à direita (preserva o
+   assunto da foto) + um degradê nosso por cima (::before) para garantir leitura
+   do texto à esquerda em qualquer largura de tela. */
+.screen-hero{position:relative;overflow:hidden;border-radius:var(--radius);
+  background:var(--bg2);border:1px solid var(--card-line);margin-bottom:20px;}
+.screen-hero::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(to right, var(--bg2) 0%, rgba(10,13,17,.88) 26%, rgba(10,13,17,.62) 42%, rgba(10,13,17,.3) 58%, rgba(10,13,17,.08) 72%, transparent 84%);}
+.screen-hero-art{position:absolute;inset:0;pointer-events:none;z-index:0;}
+.screen-hero-art img{width:100%;height:100%;display:block;object-fit:cover;object-position:78% center;}
+.screen-hero-inner{position:relative;z-index:2;display:flex;align-items:center;min-height:68px;padding:26px 34px;}
+.screen-hero-text{max-width:58%;}
+.screen-hero-text h1{margin:0 0 6px;}
+.screen-hero-text .cobr-det{margin-top:0;}
+.screen-hero-extra{position:relative;z-index:2;padding:0 34px 26px;}
 
 /* badges */
 .badge{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap;font-family:var(--fbody);}
@@ -193,6 +199,8 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .tile-graf{background:#242a31;color:var(--fg);border:1px solid rgba(255,255,255,.08);}
 .tile-azul{background:linear-gradient(145deg,#1f3a6b,#13213f);color:#6aa8ff;}
 .tile-vermelho{background:linear-gradient(145deg,#5a1f27,#3a1319);color:#ff8a8a;}
+.tile-teal{background:linear-gradient(145deg,#0f3a37,#0a2321);color:var(--teal);border:1px solid rgba(0,229,215,.3);}
+.tile-outline{background:rgba(0,229,215,.05);color:var(--teal);border:1px solid rgba(0,229,215,.35);}
 
 /* chevrons */
 .chev{width:18px;height:18px;color:var(--faint);flex:none;}
@@ -207,6 +215,9 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .prox-info{flex:1;}
 .prox-dh{font-size:18px;font-weight:700;font-family:var(--fdisp);white-space:nowrap;}
 .dh-short{display:none;}
+.prox-aula-dest .prox-dh{font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;}
+.prox-dh-sep{color:var(--card-line);margin:0 10px;}
+.prox-dh-clock{width:14px;height:14px;display:inline-flex;color:var(--teal);margin-right:5px;flex:none;}
 .prox-tit{font-size:21px;font-weight:800;font-family:var(--fdisp);margin-top:2px;}
 .prox-sub{color:var(--muted);font-size:14px;margin-top:2px;}
 .prox-local{color:var(--muted);font-size:13px;margin-top:6px;display:flex;align-items:center;gap:5px;}
@@ -219,6 +230,8 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .btn-primary{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#042523;flex:1;}
 .btn-dark{background:#1b222a;border:1px solid var(--card-line);color:var(--fg);}
 .btn-dang{background:transparent;border:1px solid #5a2328;color:var(--danger);}
+.btn-outline{background:rgba(0,229,215,.06);border:1px solid rgba(0,229,215,.4);color:var(--teal);transition:background .15s ease,border-color .15s ease;}
+.btn-outline:hover{background:rgba(0,229,215,.14);border-color:rgba(0,229,215,.65);}
 
 /* semana / anel */
 .semana-card{display:flex;flex-direction:column;justify-content:space-between;}
@@ -248,6 +261,11 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .si-azul{background:rgba(59,130,246,.14);color:#6aa8ff;}
 .si-verde{background:rgba(16,163,127,.16);color:var(--green);}
 .si-amber{background:rgba(231,181,60,.14);color:var(--amber);}
+.si-dang{background:var(--danger-bg);color:var(--danger);}
+.stat-row-3{grid-template-columns:repeat(3,1fr);}
+.stat-row-4{grid-template-columns:repeat(4,1fr);}
+.stat-card-btn{width:100%;text-align:left;border-color:var(--card-line);transition:border-color .15s ease;}
+.stat-card-btn.active{border-color:var(--teal);}
 .stat-txt{display:flex;flex-direction:column;min-width:0;}
 .stat-cap{color:var(--muted);font-size:13px;}
 .stat-val{font-size:22px;font-weight:800;font-family:var(--fdisp);display:flex;align-items:center;gap:6px;white-space:nowrap;}
@@ -295,6 +313,18 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .pg-head{margin-bottom:16px;}
 .pg-head h1{font-size:30px;font-weight:800;}
 .pg-sub{color:var(--muted);font-size:14px;margin:4px 0 0;}
+.btn-sm{padding:9px 14px;font-size:13px;}
+.prox-aula-dest{margin-bottom:20px;border-color:rgba(0,229,215,.25);}
+.prox-cap-chip{display:inline-block;border:1px solid rgba(0,229,215,.4);background:rgba(0,229,215,.08);
+  border-radius:999px;padding:4px 12px;}
+.prox-aula-main{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;}
+.prox-aula-left{display:flex;align-items:center;gap:16px;flex:1;min-width:220px;}
+.prox-aula-right{display:flex;flex-direction:column;align-items:flex-end;gap:14px;flex:none;}
+.prox-aula-faltam{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.prox-aula-faltam-cap{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:12px;}
+.prox-aula-faltam-cap svg{width:13px;height:13px;}
+.prox-aula-faltam-val{font-size:22px;font-weight:800;font-family:var(--fdisp);color:var(--teal);}
+.aulas-subtit{font-size:12.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin:18px 0 10px;}
 .aulas-grupo{margin-bottom:20px;}
 .grupo-dia{font-size:13.5px;color:var(--fg);font-weight:600;margin-bottom:9px;}
 .aula-item{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--card-line);
@@ -316,10 +346,10 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px;}
 .cal-head span{text-align:center;font-size:12px;color:var(--muted);padding:6px 0;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
-.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:11px;position:relative;}
+.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border-radius:11px;position:relative;transition:box-shadow .15s ease;}
 .cal-cell.empty{visibility:hidden;}
 .cal-n{font-size:14px;font-weight:600;}
-.cal-cell.sel{background:linear-gradient(135deg,var(--teal),var(--teal2));}
+.cal-cell.sel{background:linear-gradient(135deg,var(--teal),var(--teal2));box-shadow:0 3px 12px rgba(0,229,215,.35);}
 .cal-cell.sel .cal-n{color:#042523;}
 .cal-dot{width:5px;height:5px;border-radius:50%;}
 .cal-dot.teal{background:var(--teal);}
@@ -335,17 +365,35 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .sem-vazio{color:var(--muted);font-size:13px;padding:2px 2px 4px;}
 .agenda-det{padding:18px;}
 .agenda-det-dia{font-size:16px;font-weight:700;font-family:var(--fdisp);margin-bottom:14px;}
-.agenda-det-item{margin-bottom:10px;}
-.agenda-det-hora{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--green);margin-bottom:7px;}
-.dot-teal{width:9px;height:12px;border-radius:3px;background:var(--green);flex:none;}
+.agenda-dia-item{display:flex;align-items:center;gap:15px;padding:16px 4px;border-top:1px solid var(--card-line);}
+.agenda-dia-item:first-child{border-top:none;padding-top:4px;}
+.agenda-dia-item .treino-tile{width:42px;height:42px;padding:10px;}
+.agenda-dia-info{flex:1;min-width:0;}
+.agenda-dia-hora{font-size:12.5px;color:var(--muted);}
+.agenda-dia-tit{font-size:15px;font-weight:700;font-family:var(--fdisp);margin-top:2px;}
+.agenda-dia-sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
+.agenda-dia-dir{display:flex;flex-direction:column;align-items:flex-end;gap:7px;}
+.agenda-dia-link{display:inline-flex;align-items:center;gap:3px;background:none;border:none;color:var(--teal);font-size:12.5px;font-weight:600;white-space:nowrap;}
+.agenda-dia-link svg{width:14px;height:14px;}
+.agenda-resumo{padding:18px;}
+.resumo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;align-items:start;}
+.resumo-item{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;}
+.resumo-item .stat-ic{width:40px;height:40px;padding:10px;flex:none;}
+.resumo-item-txt{display:flex;flex-direction:column;align-items:center;}
+.resumo-item-txt b{font-size:19px;font-weight:800;font-family:var(--fdisp);line-height:1.2;}
+.resumo-item-txt span{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3;}
 
 /* ===================== Solicitações ===================== */
-.btn-nova{width:100%;margin-bottom:16px;padding:14px;font-size:15px;}
+.solic-cta-row{display:flex;gap:12px;margin-bottom:16px;}
+.solic-cta-row .btn-wa{margin-right:0;flex:none;}
+.solic-resumo-nota{margin:-4px 0 16px;}
+.btn-nova{flex:1;padding:14px;font-size:15px;}
 .solic-card{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--card-line);
   border-radius:var(--radius-sm);padding:14px;margin-bottom:12px;}
 .solic-ic{width:50px;height:50px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;padding:13px;color:#fff;}
 .solic-ic.red{background:#D0463B;}
 .solic-ic.green{background:#12A594;}
+.solic-ic.blue{background:#2A5DB0;}
 .solic-info{flex:1;min-width:0;}
 .solic-tit{font-size:15.5px;font-weight:700;font-family:var(--fdisp);}
 .solic-quando{font-size:13px;color:var(--muted);margin-top:3px;}
@@ -372,6 +420,9 @@ body[data-tab="inicio"] .topbanner{display:block;}
 .fin-pix{margin-top:4px;padding:16px 18px;}
 .fin-pix-rot{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px;}
 .fin-pix-val{font-size:15px;font-weight:700;font-family:var(--fdisp);margin-top:6px;word-break:break-all;}
+.fin-pix-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.fin-pix-row .fin-pix-val{margin-top:0;}
+.fin-pix-copy{flex:none;padding:9px 14px;font-size:13px;}
 .cobr-pix{font-size:12.5px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px;}
 .cobr-pix-ic{width:15px;height:15px;color:var(--amber);display:inline-block;}
 .cobr-dir{display:flex;flex-direction:column;align-items:flex-end;gap:14px;}
@@ -395,22 +446,86 @@ body[data-tab="inicio"] .topbanner{display:block;}
       linear-gradient(0deg, var(--bg) 8%, rgba(12,15,19,.55) 45%, rgba(12,15,19,.25) 100%),
       url(/foto_academia.jpg) center / cover no-repeat;}
 
+  /* Aulas mobile: mesmo princípio do banner do Início (foto real + degradê
+     atrás do título/abas), com recorte e altura próprios — a foto do hero
+     (hero-aulas.webp) é uma faixa bem mais larga (12,3:1) que a de Início,
+     então usamos uma janela mais estreita/focada nos halteres em vez do
+     enquadramento completo usado no desktop. Só se aplica à aba Aulas. */
+  body[data-tab="aulas"] .topbanner{display:block;height:192px;
+    background:
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 42%, rgba(10,13,17,.55) 68%, rgba(10,13,17,.18) 100%),
+      url(/img/hero-aulas.webp) 70% center / cover no-repeat;}
+  /* Agenda mobile: mesmo tratamento aprovado em Aulas (altura, degradê),
+     recorte próprio focado no calendário da foto hero-agenda.webp. O trecho
+     sólido (0–42%) garante que o fundo fique 100% opaco antes do card
+     seguinte começar — a foto do calendário é clara e "vazava" visualmente
+     por trás do card quando o degradê só ficava opaco nos primeiros 4%. */
+  body[data-tab="agenda"] .topbanner{display:block;height:192px;
+    background:
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 42%, rgba(10,13,17,.55) 68%, rgba(10,13,17,.18) 100%),
+      url(/img/hero-agenda.webp) 80% center / cover no-repeat;}
+  /* Solicitações mobile: mesmo tratamento aprovado em Aulas/Agenda, recorte
+     próprio focado no celular com checklist da foto hero-solicitacoes.webp. */
+  body[data-tab="solicitacoes"] .topbanner{display:block;height:192px;
+    background:
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 42%, rgba(10,13,17,.55) 68%, rgba(10,13,17,.18) 100%),
+      url(/img/hero-solicitacoes.webp) 85% center / cover no-repeat;}
+  /* Financeiro mobile: mesmo tratamento aprovado nas outras 3 telas, recorte
+     próprio focado no cartão (chip + contactless) da foto hero-financeiro.webp. */
+  body[data-tab="financeiro"] .topbanner{display:block;height:192px;
+    background:
+      linear-gradient(0deg, var(--bg) 0%, var(--bg) 42%, rgba(10,13,17,.55) 68%, rgba(10,13,17,.18) 100%),
+      url(/img/hero-financeiro.webp) 90% center / cover no-repeat;}
+
   /* mobile header */
   .m-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 6px;}
   .m-header-right{display:flex;align-items:center;gap:12px;}
   .brand-m{font-size:24px;}
   .m-title{font-size:30px;font-weight:800;}
+  /* Aulas/Agenda/Solicitações/Financeiro: mais respiro acima do título, para
+     não colar no topo da foto */
+  body[data-tab="aulas"] .m-header,
+  body[data-tab="agenda"] .m-header,
+  body[data-tab="solicitacoes"] .m-header,
+  body[data-tab="financeiro"] .m-header{padding-top:30px;padding-bottom:14px;}
 
   /* hero compacto */
   .hero{margin-bottom:14px;padding:4px 2px 8px;}
   .hero h1{font-size:30px;}
   .hero p{font-size:15px;}
 
+  /* screen-hero: no mobile o título já vem do m-header — só o conteúdo
+     funcional (abas/indicadores/aviso) continua visível, sem o painel/foto. */
+  .screen-hero{background:none;border:none;margin-bottom:0;}
+  .screen-hero-art{display:none;}
+  .screen-hero-extra{padding:0;margin-bottom:16px;}
+  /* Aulas/Agenda/Solicitações: respiro deliberado entre o fim do degradê da
+     foto e o conteúdo seguinte (card de destaque / calendário / indicadores),
+     em vez de um corte abrupto. */
+  body[data-tab="aulas"] .screen-hero-extra,
+  body[data-tab="agenda"] .screen-hero-extra,
+  body[data-tab="solicitacoes"] .screen-hero-extra,
+  body[data-tab="financeiro"] .screen-hero-extra{margin-bottom:22px;}
+
   /* layouts reflow p/ 1 coluna */
   .grid-prox{grid-template-columns:1fr;gap:14px;}
   .grid-2{grid-template-columns:1fr;}
   .stat-row{grid-template-columns:1fr 1fr;gap:12px;}
-  .agenda-wrap{grid-template-columns:1fr;}
+  .agenda-wrap{grid-template-columns:1fr;gap:14px;}
+  /* Agenda mobile: calendário mais compacto (células menos quadradas, menos
+     espaço ao redor) sem reduzir a largura de toque dos dias, e menos
+     respiro entre calendário → aulas do dia → resumo. */
+  .agenda-cal{padding:14px;}
+  .cal-nav{margin-bottom:10px;}
+  .cal-head{margin-bottom:2px;}
+  .cal-head span{padding:4px 0;}
+  .cal-cell{aspect-ratio:1/.8;}
+  .agenda-lado{gap:12px;}
+  .agenda-det,.agenda-lado-det{padding:14px 12px;}
+  .agenda-det-dia{margin-bottom:10px;}
+  .agenda-dia-item{padding:12px 4px;}
+  .agenda-dia-item:first-child{padding-top:2px;}
+  .agenda-resumo{padding:14px 12px;}
 
   /* no mobile o Início não mostra: semana(anel), últimas atividades, progresso */
   .screen-inicio .semana-card{display:none;}
@@ -433,17 +548,63 @@ body[data-tab="inicio"] .topbanner{display:block;}
   .stat-card{padding:14px;gap:11px;}
   .stat-ic{width:44px;height:44px;}
   /* aulas: cartões compactos */
-  .aula-item{gap:12px;padding:13px;}
+  .aula-item{gap:11px;padding:12px;}
+  .aula-item-hora{font-size:12px;}
   .aula-item-tit{font-size:14.5px;line-height:1.2;}
+  .aula-item-dir{gap:6px;}
   .treino-tile{width:52px;height:52px;padding:13px;}
   .badge{font-size:11.5px;padding:4px 10px;}
   /* solicitações: 4 abas numa linha e cards compactos */
   .seg{gap:6px;}
   .seg-b{padding:8px 11px;font-size:12.5px;}
   .seg-wrap{flex-wrap:nowrap;}
-  .solic-ic{width:46px;height:46px;padding:12px;}
+  .solic-ic{width:42px;height:42px;padding:11px;}
   .solic-tit{font-size:14.5px;line-height:1.2;}
+  .solic-quando{font-size:12px;}
+  .solic-sol{font-size:11.5px;}
   .solic-info{min-width:0;}
+  .solic-card{gap:11px;padding:12px;}
+  .solic-dir{gap:6px;}
+  /* Nova solicitação + WhatsApp lado a lado (não empilhados), para não
+     desperdiçar altura — WhatsApp fica com largura só do seu conteúdo,
+     Nova solicitação ocupa o resto. */
+  .solic-cta-row .btn-nova{flex:1;padding:13px 10px;font-size:13.5px;white-space:nowrap;}
+  .solic-cta-row .btn-wa{flex:none;padding:13px 16px;font-size:13.5px;}
+
+  /* Financeiro: banner, cards de cobrança e bloco PIX mais compactos,
+     mesmo ritmo das demais telas aprovadas. */
+  .fin-banner{padding:13px 14px;gap:11px;margin-bottom:14px;}
+  .fin-banner-ic{width:38px;height:38px;padding:10px;}
+  .fin-banner-t{font-size:14px;}
+  .fin-banner-s{font-size:12px;}
+  .cobr-card{padding:13px 14px;gap:10px;margin-bottom:10px;}
+  .cobr-mes{font-size:13.5px;line-height:1.25;}
+  .cobr-val{font-size:20px;}
+  .cobr-det{font-size:12px;}
+  .cobr-dir{gap:10px;}
+  .fin-pix{padding:13px 14px;}
+  .fin-pix-copy{padding:8px 12px;font-size:12.5px;}
+
+  /* Resumo do mês (Agenda): em mobile o card ocupa a largura toda (empilhado,
+     sem dividir espaço com o calendário), então os números não precisam
+     encolher — mantém o mesmo tamanho legível do desktop. Padding/alturas
+     dos painéis da Agenda ficam centralizados logo acima, junto do resto
+     das otimizações de altura dessa tela. */
+  .resumo-item-txt b{font-size:19px;}
+  .resumo-item .stat-ic{width:40px;height:40px;padding:10px;}
+  .resumo-grid{gap:6px;}
+  /* Indicadores do Financeiro (3 cards) em mobile: 2 na primeira linha,
+     3º ocupando a largura inteira da segunda — explícito via grid-column,
+     para não depender da ordem de cascata com a regra genérica .stat-row
+     de telas muito estreitas (era isso que cortava o 3º card ao meio). */
+  .stat-row-3{grid-template-columns:1fr 1fr;gap:8px;}
+  .stat-row-3>:nth-child(3){grid-column:1 / -1;}
+  /* card "Próxima aula": no mobile, Faltam + botão ficam lado a lado (em vez de
+     empilhados) para reduzir altura e eliminar espaço vazio entre os blocos. */
+  .prox-aula-main{gap:12px;}
+  .prox-aula-right{flex-direction:row;align-items:flex-end;justify-content:space-between;width:100%;gap:12px;}
+  .prox-aula-faltam{align-items:flex-start;}
+  .prox-aula-dest{padding:16px;}
 
   /* bottom nav */
   .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#0A0D11;
