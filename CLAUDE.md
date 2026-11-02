@@ -6,9 +6,9 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 
 - SPA em **JavaScript puro + Vite 5.4** (sem framework, sem TypeScript).
 - `index.html` — shell único (gate de login/convite, sidebar/topbar, bottom nav, modal container). Carrega apenas `/src/main.js`.
-- `src/main.js` (~1156 linhas) — toda a lógica da aplicação.
+- `src/main.js` (~1646 linhas) — toda a lógica da aplicação.
 - **Atenção**: existe um `main.js` na **raiz** do repo (967 linhas) que é cópia antiga/morta — não é referenciado pelo `index.html` (que só carrega `/src/main.js`). Não editar o da raiz pensando que é o ativo; não remover sem confirmar com o usuário.
-- `src/styles.css`, `styles.css` (raiz) — estilos.
+- `src/styles.css` (~806 linhas), `styles.css` (raiz) — estilos.
 - `public/` — PWA: ícones, `manifest.webmanifest`, `sw.js`.
 - Não há pasta `supabase/`, `.sql` ou tipos gerados neste repositório — schema inteiramente externo (ver `../docs/ARQUITETURA-BANCO.md`).
 - Sem README, sem lint, sem testes.
@@ -20,6 +20,13 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 - Perfil: foto (crop via `cropperjs`, RPC `definir_foto_aluno`), alteração de senha.
 - Notificações: sino com painel, Web Push (assinatura/cancelamento via `qrcode`-free VAPID flow, RPCs `salvar_push_subscription`/`remover_push_subscription`).
 - PWA instalável com service worker registrado em `src/main.js`.
+
+## Padrão visual "Proposta 2" (Aulas, Agenda, Solicitações, Financeiro)
+
+- Hero fotográfico compartilhado via `screenHero(titulo, subtitulo, imgSrc, extraHtml)`: título + subtítulo + foto à direita no desktop (`.screen-hero`), envolvendo o conteúdo funcional que cada tela passa em `extraHtml` (abas, indicadores ou aviso) — não é só decoração, é parte do layout.
+- Fotos finais em `public/img/hero-aulas.webp`, `hero-agenda.webp`, `hero-solicitacoes.webp`, `hero-financeiro.webp` (mesmo padrão usado antes só em Avaliação física, `halteres-avaliacao.webp`).
+- No mobile, cada tela tem seu próprio hero fotográfico (reaproveita o `#topbanner` do Início), escopado via seletor `body[data-tab="<id-da-tela>"] .topbanner` dentro do media query mobile em `src/styles.css` — recorte (`background-position`), altura e degradê são ajustados por tela. Ao estender esse padrão para uma tela nova, seguir esse mesmo mecanismo em vez de criar um novo.
+- Ícones do pacote da Proposta 2 reutilizados no objeto `IC` em `src/main.js` (nav lateral/inferior, tiles de treino, indicadores, ações) — ver comentários inline antes de adicionar ícone novo, para não duplicar um que já exista.
 
 ## Comandos de desenvolvimento
 
