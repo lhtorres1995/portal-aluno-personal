@@ -142,6 +142,7 @@ import './styles.css';
   var avalMetricaSel = null;     // id da métrica escolhida no gráfico de evolução (null = decide no 1º render)
   var avalVerTodas = false;      // "ver todas as medidas" do comparativo expandido
   var avalExpandidas = {};       // {avaliacaoId: true} — linhas do histórico abertas
+  var aulasCountdownTimer = null; // intervalo do "faltam Xh Ymin" da tela Aulas
 
   /* ---------------- MOCK (marcado) ---------------------------------------- */
   // Solicitações e Financeiro agora são REAIS. Só resta mock o bloco de
@@ -441,16 +442,16 @@ import './styles.css';
      ÍCONES / NAV / tipos de treino
      ========================================================================= */
   var IC = {
-    home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8v10h-6v-7h-6v7H3z"/></svg>',
-    aulas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/></svg>',
-    agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>',
-    mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/></svg>',
-    financeiro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
+    home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>',
+    aulas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15l2 2 5-5"/></svg>',
+    agenda:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15h2M14 15h2"/></svg>',
+    mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 7 8-7"/></svg>',
+    financeiro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
     bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
     chevR:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>',
     chevL:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>',
     chevD:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
-    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0z"/><circle cx="12" cy="10" r="2.5"/></svg>',
     plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>',
     check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
     clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
@@ -480,15 +481,23 @@ import './styles.css';
     box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4V7z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
     arrowDown:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
     pix:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2.5l3.2 3.2a2 2 0 0 0 1.4.6H18L21.5 9.8a2 2 0 0 1 0 2.8L18 16.1h-1.4a2 2 0 0 0-1.4.6L12 20.9l-3.2-3.2a2 2 0 0 0-1.4-.6H6L2.5 13.6a2 2 0 0 1 0-2.8L6 7.3h1.4a2 2 0 0 0 1.4-.6L12 2.5z"/></svg>',
-    whats:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a10 10 0 0 0-8.6 15l-1.3 4.8 4.9-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 0 1 0 16 8 8 0 0 1-4-1.1l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm-3.3 4c-.2 0-.5 0-.7.4-.2.4-.9.9-.9 2.2s.9 2.5 1 2.7c.2.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.2.7.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.3l-2-1c-.3-.1-.5-.1-.7.1l-.6.8c-.1.2-.3.2-.5.1-.7-.3-1.4-.5-2.2-1.5-.3-.4 0-.3.4-1.1.1-.1 0-.3 0-.4l-.9-2.1c-.2-.6-.4-.5-.6-.5h-.6z"/></svg>',
-    logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>'
+    whats:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 3 22l5-2a9 9 0 1 0-3-3z"/><path d="M9 8c1 4 3 6 7 7"/></svg>',
+    logout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>',
+    // Pacote de ícones da Proposta 2 (LT360_Icones) — SVGs originais, reutilizados como vieram.
+    copiar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>',
+    checkCirc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>',
+    xcirc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 8 8 8M16 8l-8 8"/></svg>',
+    navAvaliacao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v4a4 4 0 0 1-8 0zM8 5H4v2a4 4 0 0 0 4 4M16 5h4v2a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></svg>',
+    treino:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="4" r="2"/><path d="m13 8-4 4 4 3 1 6M13 8l4 3 4-1M9 12l-5 2M9 15l-4 5"/></svg>',
+    emAnalise:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>',
+    reposicao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a8 8 0 0 0-14-2L3 9M3 4v5h5M4 16a8 8 0 0 0 14 2l3-3M21 20v-5h-5"/></svg>'
   };
   var NAV = [
     {id:"inicio",label:"Início",ic:"home"},{id:"aulas",label:"Aulas",ic:"aulas"},
     {id:"agenda",label:"Agenda",ic:"agenda"},{id:"solicitacoes",label:"Solicitações",ic:"mail"},
-    {id:"financeiro",label:"Financeiro",ic:"financeiro"},{id:"avaliacao",label:"Avaliação",ic:"trophy"}
+    {id:"financeiro",label:"Financeiro",ic:"financeiro"},{id:"avaliacao",label:"Avaliação",ic:"navAvaliacao"}
   ];
-  var TIPO = { forca:{ic:"dumbbell",tile:"tile-graf"}, funcional:{ic:"running",tile:"tile-azul"}, cardio:{ic:"heart",tile:"tile-vermelho"} };
+  var TIPO = { forca:{ic:"dumbbell",tile:"tile-graf"}, funcional:{ic:"treino",tile:"tile-teal"}, cardio:{ic:"heart",tile:"tile-vermelho"} };
 
   /* =========================================================================
      Shell (sidebar, bottom nav, header mobile)
@@ -555,7 +564,23 @@ import './styles.css';
     else if(st==="Negada"||st==="Cancelada") cls="dang";
     return '<span class="badge badge-'+cls+'">'+st+'</span>';
   }
-  function tileTreino(tipo){ var t=TIPO[tipo]||TIPO.forca; return '<span class="treino-tile '+t.tile+'">'+IC[t.ic]+'</span>'; }
+  function tileTreino(tipo, outline){ var t=TIPO[tipo]||TIPO.forca; return '<span class="treino-tile '+(outline?"tile-outline":t.tile)+'">'+IC[t.ic]+'</span>'; }
+  // Cabeçalho premium (hero) de cada tela: título + subtítulo + arte à direita,
+  // envolvendo o conteúdo funcional que o mockup mostra logo abaixo do subtítulo
+  // (abas, indicadores ou aviso — passado em extraHtml). Título/subtítulo/arte
+  // só aparecem no desktop (no mobile o título é o m-header genérico); extraHtml
+  // aparece sempre, nas duas resoluções.
+  // As 4 telas já usam a fotografia final (hero-*.webp).
+  function screenHero(titulo, subtitulo, imgSrc, extraHtml){
+    return '<div class="screen-hero"><div class="screen-hero-art"><img src="'+esc(imgSrc)+'" alt="" aria-hidden="true"></div>'+
+      '<div class="screen-hero-inner only-desktop"><div class="screen-hero-text"><h1>'+esc(titulo)+'</h1>'+
+      (subtitulo ? '<div class="cobr-det">'+esc(subtitulo)+'</div>' : '')+'</div></div>'+
+      (extraHtml ? '<div class="screen-hero-extra">'+extraHtml+'</div>' : '')+
+      '</div>';
+  }
+  function statMiniCard(ic,cls,val,cap){
+    return '<div class="card stat-card"><span class="stat-ic '+cls+'">'+IC[ic]+'</span><div class="stat-txt"><span class="stat-cap">'+cap+'</span><span class="stat-val">'+val+'</span></div></div>';
+  }
   function cardAula(a, comLocal){
     var selo = (a.checkinOrigem==="checkout")
       ? '<div class="aula-item-checkout">'+IC.check+' Concluída via check-out'+(a.checkinEm?' · '+horaCheckin(a.checkinEm):'')+'</div>'
@@ -644,19 +669,69 @@ import './styles.css';
     return arr.map(enriquecer);
   }
   window.setAulasTab = function(t){ aulasTab=t; ir("aulas"); };
+  // "Faltam Xh Ymin" — só quando a data/hora da aula é confiável e ainda não passou.
+  function faltamTexto(a){
+    var alvo=new Date(a.data+"T"+(a.hora||"00:00")+":00").getTime();
+    if(isNaN(alvo)) return null;
+    var diff=alvo-Date.now();
+    if(diff<=0) return null;
+    var totalMin=Math.floor(diff/60000);
+    var h=Math.floor(totalMin/60), m=totalMin%60;
+    return (h>0?h+"h ":"")+m+"min";
+  }
+  function cardProximaAulaDestaque(a){
+    var faltam=faltamTexto(a);
+    return '<div class="card prox-aula-dest"><div class="prox-head"><span class="prox-cap prox-cap-chip">PRÓXIMA AULA</span></div>'+
+      '<div class="prox-aula-main"><div class="prox-aula-left">'+tileTreino(a.tipo)+
+        '<div class="prox-info"><div class="prox-dh"><span class="dh-long">'+capitalizar(diaSemanaLabel(a.data)).slice(0,3)+', '+fmtDataBR(a.data)+'<span class="prox-dh-sep">|</span><span class="prox-dh-clock">'+IC.clock+'</span>'+a.hora+'</span>'+
+        '<span class="dh-short">'+fmtDataBR(a.data).slice(0,5)+' • '+a.hora+'</span></div>'+
+        '<div class="prox-tit">'+a.titulo+'</div><div class="prox-sub">'+a.sub+'</div>'+
+        (a.local?'<div class="prox-local">'+IC.pin+esc(a.local)+'</div>':'')+'</div></div>'+
+        '<div class="prox-aula-right">'+
+        (faltam?'<div class="prox-aula-faltam"><span class="prox-aula-faltam-cap">'+IC.clock+'Faltam</span><span class="prox-aula-faltam-val" id="prox-aula-countdown" data-aula-data="'+a.data+'" data-aula-hora="'+a.hora+'">'+faltam+'</span></div>':'')+
+        '<button class="btn btn-outline btn-sm" onclick="ir(\'agenda\')">Ver detalhes '+IC.chevR+'</button></div></div></div>';
+  }
+  function pararCountdownAulas(){ if(aulasCountdownTimer){ clearInterval(aulasCountdownTimer); aulasCountdownTimer=null; } }
+  function iniciarCountdownAulas(){
+    pararCountdownAulas();
+    if(!document.getElementById("prox-aula-countdown")) return;
+    aulasCountdownTimer=setInterval(function(){
+      var el=document.getElementById("prox-aula-countdown");
+      if(!el){ pararCountdownAulas(); return; }
+      var alvo=new Date(el.getAttribute("data-aula-data")+"T"+el.getAttribute("data-aula-hora")+":00").getTime();
+      var diff=alvo-Date.now();
+      if(diff<=0){ el.textContent="Agora"; pararCountdownAulas(); return; }
+      var totalMin=Math.floor(diff/60000);
+      var h=Math.floor(totalMin/60), m=totalMin%60;
+      el.textContent=(h>0?h+"h ":"")+m+"min";
+    }, 30000);
+  }
+  // Variante compacta de cardAula com data+hora dentro do próprio card (sem
+  // cabeçalho de dia acima) — conforme a referência de Aulas/Agenda-Lista.
+  // cardAula (com agrupamento por dia) continua intacto para onde já era usado.
+  function cardAulaLista(a){
+    var selo = (a.checkinOrigem==="checkout")
+      ? '<div class="aula-item-checkout">'+IC.check+' Concluída via check-out'+(a.checkinEm?' · '+horaCheckin(a.checkinEm):'')+'</div>'
+      : '';
+    return '<div class="aula-item">'+tileTreino(a.tipo)+
+      '<div class="aula-item-info"><div class="aula-item-hora"><span class="dh-long">'+capitalizar(diaSemanaLabel(a.data)).slice(0,3)+', '+fmtDataBR(a.data)+' · '+a.hora+'</span>'+
+      '<span class="dh-short">'+fmtDataBR(a.data).slice(0,5)+' · '+a.hora+'</span></div>'+
+      '<div class="aula-item-tit">'+a.titulo+'</div><div class="aula-item-sub">'+a.sub+'</div>'+
+      (a.local?'<div class="aula-item-local">'+IC.pin+esc(a.local)+'</div>':'')+selo+'</div>'+
+      '<div class="aula-item-dir">'+statusBadge(a.statusLabel)+'<span class="chev">'+IC.chevR+'</span></div></div>';
+  }
   function screenAulas(){
     var lista=listaAulasPorTab();
     var tabs='<div class="seg">'+
       '<button class="seg-b'+(aulasTab==="proximas"?" active":"")+'" onclick="setAulasTab(\'proximas\')">Próximas</button>'+
       '<button class="seg-b'+(aulasTab==="realizadas"?" active":"")+'" onclick="setAulasTab(\'realizadas\')">Realizadas</button>'+
       '<button class="seg-b'+(aulasTab==="canceladas"?" active":"")+'" onclick="setAulasTab(\'canceladas\')">Canceladas</button></div>';
-    // agrupa por dia
-    var porDia={}, ordem=[];
-    lista.forEach(function(a){ if(!porDia[a.data]){ porDia[a.data]=[]; ordem.push(a.data); } porDia[a.data].push(a); });
-    var corpo = ordem.length ? ordem.map(function(ds){
-      return '<div class="aulas-grupo"><div class="grupo-dia">'+capitalizar(diaSemanaLabel(ds))+', '+fmtDataBR(ds)+'</div>'+porDia[ds].map(function(a){return cardAula(a,false);}).join("")+'</div>';
-    }).join("") : '<div class="lista-vazia">Nenhuma aula nesta lista.</div>';
-    return '<div class="only-desktop pg-head"><h1>Aulas</h1></div>'+tabs+corpo;
+    var destaque="";
+    if(aulasTab==="proximas" && lista.length){ destaque=cardProximaAulaDestaque(lista[0]); lista=lista.slice(1); }
+    var subtit = (destaque && lista.length) ? '<div class="aulas-subtit">Próximas aulas</div>' : "";
+    var corpo = lista.length ? lista.map(cardAulaLista).join("")
+      : (destaque ? "" : '<div class="lista-vazia">Nenhuma aula nesta lista.</div>');
+    return screenHero("Aulas","Organize seus treinos e acompanhe suas próximas aulas.","/img/hero-aulas.webp",tabs)+destaque+subtit+corpo;
   }
 
   /* =========================================================================
@@ -674,10 +749,18 @@ import './styles.css';
   };
   function addDias(ds, n){ var p=ds.split("-"); var d=new Date(+p[0], +p[1]-1, +p[2]); d.setDate(d.getDate()+n); return dataLocalStr(d); }
   function aulasDoDia(ds){ return aulas.filter(function(a){ return a.data===ds && ativa(a); }).sort(ordAsc).map(enriquecer); }
+  // Card do painel "Aulas do dia" (Agenda, visão Mês): tile outline, badge de
+  // status E link "Ver detalhes" (os dois, conforme a referência aprovada).
+  function cardAulaDetalheDia(a){
+    return '<div class="agenda-dia-item">'+tileTreino(a.tipo,true)+
+      '<div class="agenda-dia-info"><div class="agenda-dia-hora">'+a.hora+'</div>'+
+      '<div class="agenda-dia-tit">'+a.titulo+'</div><div class="agenda-dia-sub">'+a.sub+'</div></div>'+
+      '<div class="agenda-dia-dir">'+statusBadge(a.statusLabel)+'<button type="button" class="link agenda-dia-link" onclick="toast(\'Em breve\')">Ver detalhes '+IC.chevR+'</button></div></div>';
+  }
   function blocoDetalheDia(ds){
     var doDia = aulasDoDia(ds);
     return '<div class="agenda-det-dia">'+capitalizar(diaSemanaLabel(ds))+', '+fmtDataBR(ds)+'</div>'+
-      (doDia.length ? doDia.map(function(it){ return '<div class="agenda-det-item"><div class="agenda-det-hora"><span class="dot-teal"></span>'+it.hora+'</div>'+cardAula(it,true)+'</div>'; }).join("")
+      (doDia.length ? doDia.map(cardAulaDetalheDia).join("")
         : '<div class="lista-vazia" style="padding:12px 2px">Nenhuma aula neste dia.</div>');
   }
   function calLabel(){
@@ -688,6 +771,24 @@ import './styles.css';
     }
     return capitalizar(MESES[agendaMes])+' de '+agendaAno;
   }
+  // Resumo do mês exibido na Agenda — contagens reais do mês em exibição
+  // (não é frequência/percentual: não há base confiável para calcular isso).
+  function resumoItemAgenda(ic,cls,val,cap){
+    return '<div class="resumo-item"><span class="stat-ic '+cls+'">'+IC[ic]+'</span><div class="resumo-item-txt"><b>'+val+'</b><span>'+cap+'</span></div></div>';
+  }
+  function blocoResumoMes(){
+    var mesPrefix = agendaAno+"-"+doisDig(agendaMes+1);
+    var doMes = aulas.filter(function(a){ return a.data.slice(0,7)===mesPrefix; });
+    var agendadas = doMes.filter(function(a){ return a.status==="agendada"||a.status==="confirmada"; }).length;
+    var realizadas = doMes.filter(function(a){ return a.status==="concluida"; }).length;
+    var canceladas = doMes.filter(function(a){ return a.status==="cancelada"; }).length;
+    return '<div class="card agenda-resumo"><div class="card-head"><h3>Resumo do mês</h3></div>'+
+      '<div class="resumo-grid">'+
+        resumoItemAgenda("agenda","si-teal",agendadas,"Aulas agendadas")+
+        resumoItemAgenda("check","si-verde",realizadas,"Aulas realizadas")+
+        resumoItemAgenda("xcirc","si-dang",canceladas,"Aulas canceladas")+
+      '</div></div>';
+  }
   function screenAgenda(){
     var nav='<div class="cal-nav"><button class="cal-arrow" onclick="agendaNav(-1)">'+IC.chevL+'</button>'+
       '<span class="cal-mes">'+calLabel()+'</span>'+
@@ -697,11 +798,7 @@ import './styles.css';
     if(agendaView==="lista"){
       var mesPrefixL = agendaAno+"-"+doisDig(agendaMes+1);
       var doMes = aulas.filter(function(a){ return a.data.slice(0,7)===mesPrefixL && ativa(a); }).sort(ordAsc).map(enriquecer);
-      var porDia={}, ordem=[];
-      doMes.forEach(function(a){ if(!porDia[a.data]){ porDia[a.data]=[]; ordem.push(a.data); } porDia[a.data].push(a); });
-      corpo = ordem.length ? ordem.map(function(ds){
-        return '<div class="aulas-grupo"><div class="grupo-dia">'+capitalizar(diaSemanaLabel(ds))+', '+fmtDataBR(ds)+'</div>'+porDia[ds].map(function(a){return cardAula(a,true);}).join("")+'</div>';
-      }).join("") : '<div class="lista-vazia">Nenhuma aula neste mês.</div>';
+      corpo = doMes.length ? doMes.map(cardAulaLista).join("") : '<div class="lista-vazia">Nenhuma aula neste mês.</div>';
       corpo = '<div class="card agenda-det">'+nav+corpo+'</div>';
     } else if(agendaView==="semana"){
       var p=agendaSel.split("-"); var inicioSemana=addDias(agendaSel, -(new Date(+p[0],+p[1]-1,+p[2]).getDay()));
@@ -727,15 +824,15 @@ import './styles.css';
           var ds=mesPrefix+"-"+doisDig(d); var sel=ds===agendaSel; var dot=dots[d];
           return '<span class="cal-cell'+(sel?' sel':'')+'" onclick="selecionarDiaAgenda(\''+ds+'\')"><span class="cal-n">'+d+'</span>'+(dot?'<span class="cal-dot teal"></span>':'')+'</span>';
         }).join("")+'</div>';
-      corpo='<div class="agenda-cal card">'+cal+'</div><div class="agenda-lado-det card agenda-det">'+blocoDetalheDia(agendaSel)+'</div>';
+      corpo='<div class="agenda-cal card">'+cal+'</div><div class="agenda-lado"><div class="agenda-lado-det card agenda-det">'+blocoDetalheDia(agendaSel)+'</div>'+blocoResumoMes()+'</div>';
     }
 
     function segAg(id,rot){ return '<button class="seg-b'+(agendaView===id?" active":"")+'" onclick="setAgendaView(\''+id+'\')">'+rot+'</button>'; }
     var seg='<div class="seg seg-agenda">'+segAg("mes","Mês")+segAg("semana","Semana")+segAg("lista","Lista")+'</div>';
 
     var wrapCls = agendaView==="mes" ? "agenda-wrap" : "agenda-wrap ag-full";
-    return '<div class="only-desktop pg-head"><h1>Agenda</h1><p class="pg-sub">Visualize todas as suas aulas e compromissos.</p></div>'+
-      seg+'<div class="'+wrapCls+'">'+corpo+'</div>';
+    return screenHero("Agenda","Visualize todas as suas aulas e compromissos.","/img/hero-agenda.webp",seg)+
+      '<div class="'+wrapCls+'">'+corpo+'</div>';
   }
 
   /* =========================================================================
@@ -750,11 +847,27 @@ import './styles.css';
     if(st==="aprovada")cls="ok"; else if(st==="negada")cls="dang"; else if(st==="contraproposta")cls="info";
     return '<span class="badge badge-'+cls+'">'+labelStatusSolic(st)+'</span>';
   }
-  function visualSolic(s){ return s.tipo==="remarcar" ? {titulo:"Remarcação de aula",ic:"agenda",cor:"red"} : {titulo:"Cancelamento de aula",ic:"check",cor:"green"}; }
-  function quandoSolic(s){
-    if(s.tipo==="remarcar" && s.dataSugerida){ return "Pedido: "+capitalizar(diaSemanaLabel(s.dataSugerida)).slice(0,3)+", "+fmtDataBR(s.dataSugerida).slice(0,5)+(s.horaSugerida?" • "+s.horaSugerida:""); }
+  // Ícone identifica o TIPO da solicitação; a cor do círculo identifica o STATUS
+  // (conforme a referência aprovada) — as duas informações continuam visíveis
+  // junto com o texto (título + badge), nada fica só na cor.
+  function visualSolic(s){ return s.tipo==="remarcar" ? {titulo:"Remarcação de aula",ic:"agenda"} : {titulo:"Cancelamento de aula",ic:"reposicao"}; }
+  function corSolicStatus(st){
+    if(st==="aprovada") return "green";
+    if(st==="negada") return "red";
+    return "blue"; // em_analise, contraproposta
+  }
+  // curto=true usa data abreviada (sem dia da semana) para caber em telas
+  // estreitas — mesmo padrão já usado em Aulas/Agenda.
+  function quandoSolic(s, curto){
+    if(s.tipo==="remarcar" && s.dataSugerida){
+      var dia = curto ? fmtDataBR(s.dataSugerida).slice(0,5) : capitalizar(diaSemanaLabel(s.dataSugerida)).slice(0,3)+", "+fmtDataBR(s.dataSugerida).slice(0,5);
+      return "Pedido: "+dia+(s.horaSugerida?" • "+s.horaSugerida:"");
+    }
     var a=getAula(s.aulaId);
-    if(a) return capitalizar(diaSemanaLabel(a.data)).slice(0,3)+", "+fmtDataBR(a.data).slice(0,5)+" • "+a.hora;
+    if(a){
+      var dia = curto ? fmtDataBR(a.data).slice(0,5) : capitalizar(diaSemanaLabel(a.data)).slice(0,3)+", "+fmtDataBR(a.data).slice(0,5);
+      return dia+" • "+a.hora;
+    }
     return "";
   }
   function waLink(tel, msg){ var d=(tel||"").replace(/\D/g,""); if(d.length<=11) d="55"+d; return "https://wa.me/"+d+"?text="+encodeURIComponent(msg); }
@@ -765,12 +878,18 @@ import './styles.css';
   }
   function cardSolicitacao(s){
     var v=visualSolic(s);
+    var cor=corSolicStatus(s.status);
     var topo='<div class="solic-card">'+
-      '<span class="solic-ic '+v.cor+'">'+IC[v.ic]+'</span>'+
-      '<div class="solic-info"><div class="solic-tit">'+v.titulo+'</div><div class="solic-quando">'+quandoSolic(s)+'</div>'+
+      '<span class="solic-ic '+cor+'">'+IC[v.ic]+'</span>'+
+      '<div class="solic-info"><div class="solic-tit">'+v.titulo+'</div>'+
+      '<div class="solic-quando"><span class="dh-long">'+quandoSolic(s)+'</span><span class="dh-short">'+quandoSolic(s,true)+'</span></div>'+
       '<div class="solic-sol">Solicitado em '+fmtDataBR((s.createdAt||HOJE_STR).slice(0,10))+'</div></div>'+
       '<div class="solic-dir">'+badgeSolic(s.status)+'<span class="chev">'+IC.chevR+'</span></div></div>';
     var extra="";
+    // O botão de WhatsApp do topo (CTA) já cobre o contato geral — manter um
+    // 2º botão igual em cada card "em_analise" duplicava a mesma ação na tela.
+    // No fluxo de contraproposta o botão continua: ali ele é contextual à
+    // negociação do novo horário, não uma repetição do CTA do topo.
     if(s.status==="contraproposta"){
       extra='<div class="solic-contra">'+
         '<div class="solic-contra-txt">Seu personal sugeriu: <b>'+capitalizar(diaSemanaLabel(s.contraData)).slice(0,3)+', '+fmtDataBR(s.contraData).slice(0,5)+' • '+s.contraHora+'</b></div>'+
@@ -778,8 +897,6 @@ import './styles.css';
           '<button class="btn btn-dark" onclick="responderContra(\''+s.id+'\',false)">Recusar</button>'+
           '<button class="btn btn-primary" onclick="responderContra(\''+s.id+'\',true)">Aceitar</button>'+
         '</div></div>';
-    } else if(s.status==="em_analise" && telefonePersonal){
-      extra='<div class="solic-contra"><div class="solic-contra-botoes">'+waPersonalBtn()+'</div></div>';
     }
     return '<div class="solic-wrap">'+topo+extra+'</div>';
   }
@@ -789,18 +906,33 @@ import './styles.css';
     if(solicTab==="em_analise") return s.status==="em_analise" || s.status==="contraproposta";
     return s.status===solicTab; // aprovada | negada
   }
-  function segSolic(id,rot){ return '<button class="seg-b'+(solicTab===id?" active":"")+'" onclick="setSolicTab(\''+id+'\')">'+rot+'</button>'; }
+  // Os próprios indicadores funcionam como filtro (toque para filtrar),
+  // conforme a referência — não há uma 2ª linha de abas separada no mockup.
+  function statCardFiltro(ic,cls,val,cap,tabId){
+    var active = solicTab===tabId;
+    return '<button type="button" class="card stat-card stat-card-btn'+(active?' active':'')+'" onclick="setSolicTab(\''+tabId+'\')">'+
+      '<span class="stat-ic '+cls+'">'+IC[ic]+'</span><div class="stat-txt"><span class="stat-cap">'+cap+'</span><span class="stat-val">'+val+'</span></div></button>';
+  }
   function screenSolic(){
-    var tabs='<div class="seg seg-wrap">'+segSolic("todas","Todas")+segSolic("em_analise","Em análise")+
-      segSolic("aprovada","Aprovadas")+segSolic("negada","Negadas")+'</div>';
-    var nova='<button class="btn btn-primary btn-nova" onclick="toast(\'Para pedir remarcação ou cancelamento, use os botões na aba Aulas.\')">'+IC.plus+' Nova solicitação</button>';
+    // Indicadores: contagem total das solicitações do aluno (todo o histórico, não só os últimos 30 dias).
+    var total=minhasSolicitacoes.length;
+    var emAnalise=minhasSolicitacoes.filter(function(s){ return s.status==="em_analise"||s.status==="contraproposta"; }).length;
+    var aprovadas=minhasSolicitacoes.filter(function(s){ return s.status==="aprovada"; }).length;
+    var negadas=minhasSolicitacoes.filter(function(s){ return s.status==="negada"; }).length;
+    var kpis='<div class="stat-row stat-row-4">'+
+      statCardFiltro("agenda","si-teal",total,"Total","todas")+
+      statCardFiltro("emAnalise","si-azul",emAnalise,"Em análise","em_analise")+
+      statCardFiltro("checkCirc","si-verde",aprovadas,"Aprovadas","aprovada")+
+      statCardFiltro("xcirc","si-dang",negadas,"Negadas","negada")+
+      '</div><div class="pg-sub solic-resumo-nota">Totais de todo o seu histórico de solicitações. Toque em um indicador para filtrar.</div>';
+    var nova='<div class="solic-cta-row"><button class="btn btn-primary btn-nova" onclick="toast(\'Para pedir remarcação ou cancelamento, use os botões na aba Aulas.\')">'+IC.plus+' Nova solicitação</button>'+waPersonalBtn()+'</div>';
     var ordenadas = minhasSolicitacoes.slice()
       .filter(solicNaTab)
       .sort(function(x,y){ return (y.createdAt||"")<(x.createdAt||"")?-1:1; });
     var vazio = solicTab==="todas" ? "Você ainda não fez nenhuma solicitação." : "Nenhuma solicitação nesta categoria.";
     var lista = ordenadas.length ? ordenadas.map(cardSolicitacao).join("")
       : '<div class="lista-vazia">'+vazio+'</div>';
-    return '<div class="only-desktop pg-head"><h1>Solicitações</h1></div>'+tabs+nova+lista;
+    return screenHero("Solicitações","Acompanhe o status das suas solicitações.","/img/hero-solicitacoes.webp",kpis)+nova+lista;
   }
   // Dispara push (não bloqueia a UI; falha silenciosa).
   function invocarPush(body){ try{ sb.functions.invoke("enviar-push", { body: body }).catch(function(){}); }catch(e){} }
@@ -877,10 +1009,15 @@ import './styles.css';
   /* =========================================================================
      TELA: Financeiro (cobranças REAIS; PIX real)
      ========================================================================= */
-  function badgeCobranca(st){
+  // Para "pendente" com vencimento ainda no futuro, mostra "A vencer DD/MM"
+  // em vez de só "Pendente" — a palavra sozinha soa como já vencido/em
+  // atraso, o que confunde ao lado do aviso "está em dia" no topo da tela
+  // (a cobrança não está atrasada, só ainda não chegou a data).
+  function badgeCobranca(st, c){
     if(st==="pago")    return '<span class="badge badge-ok">Pago</span>';
     if(st==="vencido") return '<span class="badge badge-dang">Vencido</span>';
-    return '<span class="badge badge-warn">Pendente</span>';
+    var rotulo = (c && c.vencimento) ? "A vencer "+fmtDataBR(c.vencimento).slice(0,5) : "Pendente";
+    return '<span class="badge badge-warn">'+rotulo+'</span>';
   }
   function detalheCobranca(c, st){
     if(st==="pago")    return (c.pagamento?("Pago em "+fmtDataBR(c.pagamento)):"Pago");
@@ -1021,6 +1158,22 @@ import './styles.css';
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(ok, function(){ fallback(txt); }); } else fallback(txt); }
     catch(e){ fallback(txt); }
   };
+  function kpisFinanceiro(vencidas, emAberto){
+    var abertas = minhasCobrancas.filter(function(c){ return statusCobranca(c)!=="pago"; });
+    var somaAberta = abertas.reduce(function(s,c){ return s+Number(c.valor||0); },0);
+    var mesAtual = HOJE_STR.slice(0,7);
+    var pagoNoMes = minhasCobrancas
+      .filter(function(c){ return c.status==="pago" && c.pagamento && c.pagamento.slice(0,7)===mesAtual; })
+      .reduce(function(s,c){ return s+Number(c.valor||0); },0);
+    var card1 = statMiniCard("agenda", somaAberta>0?"si-amber":"si-verde", fmtMoeda(somaAberta), "Saldo em aberto");
+    var card2 = vencidas.length
+      ? statMiniCard("xcirc","si-dang", fmtMoeda(vencidas[0].valor), esc(vencidas[0].label)+" · vencida")
+      : statMiniCard("check","si-verde", fmtMoeda(pagoNoMes), "Pago no mês");
+    var card3 = emAberto.length
+      ? statMiniCard("agenda","si-teal", fmtDataBR(emAberto[0].vencimento), esc(emAberto[0].label))
+      : statMiniCard("agenda","si-teal", "—", "Sem vencimento futuro");
+    return '<div class="stat-row stat-row-3">'+card1+card2+card3+'</div>';
+  }
   function screenFinanceiro(){
     var tabs='<div class="seg">'+
       '<button class="seg-b'+(finTab==="cobrancas"?" active":"")+'" onclick="setFinTab(\'cobrancas\')">Cobranças</button>'+
@@ -1030,6 +1183,7 @@ import './styles.css';
     var vencidas = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="vencido"; });
     var emAberto = minhasCobrancas.filter(function(c){ return statusCobranca(c)==="pendente" && c.vencimento; })
                                   .sort(function(a,b){ return a.vencimento<b.vencimento?-1:1; });
+    var kpis = finTab==="cobrancas" ? kpisFinanceiro(vencidas, emAberto) : "";
     var banner;
     if(vencidas.length){
       banner='<div class="fin-banner fin-banner-alerta"><span class="fin-banner-ic">'+IC.bell+'</span><div>'+
@@ -1044,6 +1198,7 @@ import './styles.css';
         '<div class="fin-banner-t">Nenhuma cobrança em aberto</div>'+
         '<div class="fin-banner-s">Você não tem pagamentos pendentes no momento</div></div></div>';
     }
+    var heroExtra = (finTab==="cobrancas" ? banner : "") + tabs;
 
     // Cobranças = em aberto (pendente/vencido); Histórico = pagas.
     var ordenadas = minhasCobrancas.slice()
@@ -1064,19 +1219,23 @@ import './styles.css';
         var dot = st==="pago" ? "green" : (st==="vencido" ? "red" : "amber");
         var seloInf = (c.pagoInformado && st!=="pago") ? '<div class="cobr-inf">'+IC.clock+' Pagamento informado · aguardando confirmação</div>' : '';
         var acao = st==="pago"
-          ? '<button class="btn btn-dark btn-pagar" onclick="abrirComprovante(\''+c.id+'\')">Comprovante</button>'
-          : '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>';
+          ? '<button class="btn btn-outline btn-pagar" onclick="abrirComprovante(\''+c.id+'\')">Comprovante</button>'
+          : (c.valor>0
+            ? '<button class="btn btn-primary btn-pagar" onclick="abrirPagamento(\''+c.id+'\')">'+IC.pix+' Pagar</button>'
+            : ""); // valor R$ 0,00: sem regra de cobrança/baixa automática definida — não mostra ação de pagamento.
         return '<div class="card cobr-card"><div class="cobr-main"><div class="cobr-mes">'+esc(c.label)+'</div>'+
           '<div class="cobr-val">'+fmtMoeda(c.valor)+'</div>'+
           '<div class="cobr-det"><span class="cobr-dot '+dot+'"></span>'+detalheCobranca(c,st)+'</div>'+seloInf+'</div>'+
-          '<div class="cobr-dir">'+badgeCobranca(st)+acao+'</div></div>';
+          '<div class="cobr-dir">'+badgeCobranca(st,c)+acao+'</div></div>';
       }).join("");
     }
-    var pix='<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
-      '<div class="fin-pix-val">'+esc(pixPersonal)+'</div></div>';
+    var pix = pixPersonal
+      ? '<div class="card fin-pix"><div class="fin-pix-rot"><span class="cobr-pix-ic">'+IC.pix+'</span> Chave PIX do seu personal</div>'+
+        '<div class="fin-pix-row"><div class="fin-pix-val" id="fin-pix-chave">'+esc(pixPersonal)+'</div>'+
+        '<button class="btn btn-outline fin-pix-copy" onclick="copiarTexto(\'fin-pix-chave\')">'+IC.copiar+' Copiar</button></div></div>'
+      : "";
 
-    var bannerVis = finTab==="cobrancas" ? banner : "";
-    return '<div class="only-desktop pg-head"><h1>Financeiro</h1></div>'+tabs+bannerVis+cobr+pix;
+    return screenHero("Financeiro","Acompanhe suas cobranças e histórico.","/img/hero-financeiro.webp",heroExtra)+kpis+cobr+pix;
   }
 
   /* =========================================================================
@@ -1393,13 +1552,8 @@ import './styles.css';
       '<div class="aval-hist-resumo only-desktop">'+resumo.join(' <span class="aval-sep">|</span> ')+'</div>'+
       '<span class="aval-hist-chev'+(aberto?' aberto':'')+'">'+IC.chevD+'</span></div>'+corpo+'</div>';
   }
-  // Arte do cabeçalho — foto real de halteres (asset local, aprovada pelo
-  // usuário), não a ilustração SVG nem o recorte do mockup. Só aparece no
-  // desktop (o header mobile é outro, genérico).
   function avalHero(subtitulo){
-    return '<div class="aval-hero only-desktop"><div class="aval-hero-text"><h1>Avaliação física</h1>'+
-      (subtitulo ? '<div class="cobr-det">'+esc(subtitulo)+'</div>' : '')+'</div>'+
-      '<div class="aval-hero-art"><img src="/img/halteres-avaliacao.webp" alt="" aria-hidden="true"></div></div>';
+    return screenHero("Avaliação física", subtitulo, "/img/halteres-avaliacao.webp");
   }
   function screenAvaliacao(){
     if (minhasAvaliacoes.length===0){
@@ -1485,6 +1639,7 @@ import './styles.css';
     c.innerHTML='<div class="screen screen-'+id+'">'+ (SCREENS[id]?SCREENS[id]():"") +'</div>';
     c.scrollTop=0;
     if(id==="perfil") renderNotifBloco();
+    if(id==="aulas") iniciarCountdownAulas(); else pararCountdownAulas();
   };
   function renderAll(){ /* compat: entra pela ir() após login */ }
 
