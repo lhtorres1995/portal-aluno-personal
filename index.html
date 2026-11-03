@@ -104,6 +104,21 @@
     </div>
 
     <nav class="bottomnav" id="bottomnav"></nav>
+
+    <!-- MENU LATERAL MOBILE (drawer) -->
+    <div class="nav-drawer" id="nav-drawer" aria-hidden="true">
+      <div class="nd-backdrop" onclick="fecharMenu()"></div>
+      <aside class="nd-panel" role="dialog" aria-modal="true" aria-label="Menu de navegação">
+        <div class="nd-head">
+          <img class="nd-logo" src="/logo_lt360.png" alt="LT360">
+          <button class="nd-close" type="button" aria-label="Fechar menu" onclick="fecharMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <nav class="nd-nav" id="nd-nav" aria-label="Navegação principal"></nav>
+        <div class="nd-foot" id="nd-foot"></div>
+      </aside>
+    </div>
   </div>
 </div>
 

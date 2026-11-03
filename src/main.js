@@ -121,7 +121,7 @@ import './styles.css';
 
   /* ---------------- Estado (dados reais) ---------------------------------- */
   var meuAlunoId=null, meuProfessorId=null, meuNome="", meuEmail="", meuTelefone="", meuFotoUrl=null;
-  var meuTreinoTipo="forca", meuTreinoLocal="", meuCheckinToken="";
+  var meuTreinoTipo="forca", meuTreinoLocal="", meuEndereco="", meuCheckinToken="";
   var meuPlanoCobranca="", meuValorAula=0;
   var nomePersonal="Seu personal", logoPersonal=null, pixPersonal="", telefonePersonal="";
   var pixTipoPersonal="", cidadePersonal="";
@@ -246,13 +246,14 @@ import './styles.css';
   }
 
   async function carregarMeusDados(authUserId){
-    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local, plano_cobranca, valor_aula, foto_url").eq("auth_user_id", authUserId).maybeSingle();
+    var alunoRes = await sb.from("alunos").select("id, nome, telefone, professor_id, treino_tipo, treino_local, plano_cobranca, valor_aula, foto_url, endereco").eq("auth_user_id", authUserId).maybeSingle();
     if (alunoRes.error) throw alunoRes.error;
     if (!alunoRes.data) throw new Error("Cadastro de aluno não encontrado.");
     meuAlunoId=alunoRes.data.id; meuProfessorId=alunoRes.data.professor_id;
     meuNome=alunoRes.data.nome||""; meuTelefone=alunoRes.data.telefone||"";
     meuFotoUrl=alunoRes.data.foto_url||null;
     meuTreinoTipo=alunoRes.data.treino_tipo||"forca"; meuTreinoLocal=alunoRes.data.treino_local||"";
+    meuEndereco=alunoRes.data.endereco||"";
     meuPlanoCobranca=alunoRes.data.plano_cobranca||""; meuValorAula=Number(alunoRes.data.valor_aula)||0;
 
     var sess=await sb.auth.getSession();
@@ -542,18 +543,36 @@ import './styles.css';
       return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>';
     }).join("");
     renderMHeader();
+    renderDrawer();
   }
+  var NDBURGER='<button class="nd-burger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav-drawer" onclick="abrirMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>';
   function renderMHeader(){
     var el=document.getElementById("m-header");
     if(tabAtual==="inicio"){
       el.className="m-header m-header-inicio";
       el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
-        '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
-        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div></div>';
+        '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" aria-label="Notificações" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
+        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div>'+NDBURGER+'</div>';
     } else {
       el.className="m-header m-header-titulo";
       var lbl = tabAtual==="perfil" ? "Meu perfil" : (NAV.filter(function(n){return n.id===tabAtual;})[0]||{label:""}).label;
-      el.innerHTML='<h1 class="m-title">'+lbl+'</h1>';
+      el.innerHTML='<h1 class="m-title">'+lbl+'</h1>'+NDBURGER;
+    }
+  }
+  function renderDrawer(){
+    var nav=document.getElementById("nd-nav");
+    if(nav){
+      nav.innerHTML = NAV.map(function(n){
+        return '<button class="nd-item'+(n.id===tabAtual?' active':'')+'" data-tab="'+n.id+'" onclick="ir(\''+n.id+'\')"><span class="nd-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
+      }).join("") +
+      '<button class="nd-item'+(tabAtual==="perfil"?' active':'')+'" data-tab="perfil" onclick="ir(\'perfil\')"><span class="nd-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Meu perfil</button>';
+    }
+    var foot=document.getElementById("nd-foot");
+    if(foot){
+      foot.innerHTML =
+        '<button class="nd-user" onclick="ir(\'perfil\')"><span class="avatar avatar-sm">'+avatarInner()+'</span>'+
+          '<span class="nd-user-txt"><b>'+esc(meuNome||"Aluno")+'</b><span>'+esc(nomePersonal)+' · Personal</span></span></button>'+
+        '<button class="nd-sair" onclick="sairDaConta()">'+IC.logout+' Sair da conta</button>';
     }
   }
 
@@ -605,7 +624,7 @@ import './styles.css';
               '<div class="prox-tit">'+D.proxima.titulo+'</div><div class="prox-sub">'+D.proxima.sub+'</div>'+
               (D.proxima.local?'<div class="prox-local">'+IC.pin+esc(D.proxima.local)+'</div>':'')+'</div>'+
             '<span class="chev chev-lg">'+IC.chevR+'</span></div>'+
-          '<div class="prox-acoes"><button class="btn btn-primary" onclick="ir(\'agenda\')">Ver detalhes</button>'+
+          '<div class="prox-acoes"><button class="btn btn-primary" onclick="verDetalhesAula(\''+D.proxima.id+'\')">Ver detalhes</button>'+
             '<button class="btn btn-dark" onclick="solicitarRemarcacao(\''+D.proxima.id+'\')">Remarcar</button>'+
             '<button class="btn btn-dang" onclick="solicitarCancelamento(\''+D.proxima.id+'\')">Cancelar</button></div></div>'
       : '<div class="card prox-card"><div class="prox-head"><span class="prox-cap">PRÓXIMA AULA</span></div>'+
@@ -689,7 +708,7 @@ import './styles.css';
         (a.local?'<div class="prox-local">'+IC.pin+esc(a.local)+'</div>':'')+'</div></div>'+
         '<div class="prox-aula-right">'+
         (faltam?'<div class="prox-aula-faltam"><span class="prox-aula-faltam-cap">'+IC.clock+'Faltam</span><span class="prox-aula-faltam-val" id="prox-aula-countdown" data-aula-data="'+a.data+'" data-aula-hora="'+a.hora+'">'+faltam+'</span></div>':'')+
-        '<button class="btn btn-outline btn-sm" onclick="ir(\'agenda\')">Ver detalhes '+IC.chevR+'</button></div></div></div>';
+        '<button class="btn btn-outline btn-sm" onclick="verDetalhesAula(\''+a.id+'\')">Ver detalhes '+IC.chevR+'</button></div></div></div>';
   }
   function pararCountdownAulas(){ if(aulasCountdownTimer){ clearInterval(aulasCountdownTimer); aulasCountdownTimer=null; } }
   function iniciarCountdownAulas(){
@@ -749,13 +768,13 @@ import './styles.css';
   };
   function addDias(ds, n){ var p=ds.split("-"); var d=new Date(+p[0], +p[1]-1, +p[2]); d.setDate(d.getDate()+n); return dataLocalStr(d); }
   function aulasDoDia(ds){ return aulas.filter(function(a){ return a.data===ds && ativa(a); }).sort(ordAsc).map(enriquecer); }
-  // Card do painel "Aulas do dia" (Agenda, visão Mês): tile outline, badge de
-  // status E link "Ver detalhes" (os dois, conforme a referência aprovada).
+  // Card do painel "Aulas do dia" (Agenda, visão Mês): tile outline e badge de
+  // status. (O antigo link "Ver detalhes" foi removido por não ter função.)
   function cardAulaDetalheDia(a){
     return '<div class="agenda-dia-item">'+tileTreino(a.tipo,true)+
       '<div class="agenda-dia-info"><div class="agenda-dia-hora">'+a.hora+'</div>'+
       '<div class="agenda-dia-tit">'+a.titulo+'</div><div class="agenda-dia-sub">'+a.sub+'</div></div>'+
-      '<div class="agenda-dia-dir">'+statusBadge(a.statusLabel)+'<button type="button" class="link agenda-dia-link" onclick="toast(\'Em breve\')">Ver detalhes '+IC.chevR+'</button></div></div>';
+      '<div class="agenda-dia-dir">'+statusBadge(a.statusLabel)+'</div></div>';
   }
   function blocoDetalheDia(ds){
     var doDia = aulasDoDia(ds);
@@ -925,7 +944,7 @@ import './styles.css';
       statCardFiltro("checkCirc","si-verde",aprovadas,"Aprovadas","aprovada")+
       statCardFiltro("xcirc","si-dang",negadas,"Negadas","negada")+
       '</div><div class="pg-sub solic-resumo-nota">Totais de todo o seu histórico de solicitações. Toque em um indicador para filtrar.</div>';
-    var nova='<div class="solic-cta-row"><button class="btn btn-primary btn-nova" onclick="toast(\'Para pedir remarcação ou cancelamento, use os botões na aba Aulas.\')">'+IC.plus+' Nova solicitação</button>'+waPersonalBtn()+'</div>';
+    var nova='<div class="solic-cta-row"><button class="btn btn-primary btn-nova" onclick="novaSolicitacao()">'+IC.plus+' Nova solicitação</button>'+waPersonalBtn()+'</div>';
     var ordenadas = minhasSolicitacoes.slice()
       .filter(solicNaTab)
       .sort(function(x,y){ return (y.createdAt||"")<(x.createdAt||"")?-1:1; });
@@ -1004,6 +1023,62 @@ import './styles.css';
     document.getElementById("modal-overlay").hidden=true;
     toast("Solicitação enviada ao personal.");
     ir("solicitacoes");
+  };
+
+  // ---- Modal "Ver detalhes da aula" (data, hora, personal, local) ----
+  // Local = local de treino do cadastro; na falta dele, o endereço do aluno.
+  var IC_PESSOA='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>';
+  function detRow(ic,lab,val){ return '<div class="aula-det-row"><span class="aula-det-ic">'+ic+'</span><span class="aula-det-txt"><span class="aula-det-lab">'+lab+'</span><span class="aula-det-val">'+val+'</span></span></div>'; }
+  window.verDetalhesAula = function(id){
+    var a=getAula(id); if(!a) return;
+    var e=enriquecer(a);
+    var localTxt = meuTreinoLocal || meuEndereco || "";
+    var localHtml = localTxt ? esc(localTxt) : '<span class="aula-det-faint">Local a combinar</span>';
+    abrirModal(
+      '<div class="modal-tit">Detalhes da aula</div>'+
+      '<div class="modal-sub">'+e.titulo+' '+statusBadge(e.statusLabel)+'</div>'+
+      '<div class="aula-det">'+
+        detRow(IC.agenda,"Data",esc(capitalizar(diaSemanaLabel(a.data))+', '+fmtDataBR(a.data)))+
+        detRow(IC.clock,"Horário",esc(a.hora))+
+        detRow(IC_PESSOA,"Personal",esc(nomePersonal))+
+        detRow(IC.pin,"Local",localHtml)+
+      '</div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark" onclick="solicitarRemarcacao(\''+id+'\')">Remarcar</button>'+
+      '<button class="btn btn-dang" onclick="solicitarCancelamento(\''+id+'\')">Cancelar</button></div>'+
+      '<button class="btn btn-fechar-full" onclick="fecharModalSolic()">Fechar</button>');
+  };
+
+  // ---- Fluxo "Nova solicitação": escolher tipo, depois a aula ----
+  window.novaSolicitacao = function(){
+    abrirModal(
+      '<div class="modal-tit">Nova solicitação</div>'+
+      '<div class="modal-sub">O que você precisa?</div>'+
+      '<div class="solic-opcoes">'+
+        '<button class="solic-opcao" onclick="escolherAulaSolic(\'remarcar\')"><span class="solic-opcao-ic">'+IC.agenda+'</span><span class="solic-opcao-txt"><b>Remarcar uma aula</b><span>Sugerir nova data e horário</span></span><span class="solic-opcao-chev">'+IC.chevR+'</span></button>'+
+        '<button class="solic-opcao" onclick="escolherAulaSolic(\'cancelar\')"><span class="solic-opcao-ic solic-opcao-ic-dang">'+IC.xcirc+'</span><span class="solic-opcao-txt"><b>Cancelar uma aula</b><span>Avisar que não poderá comparecer</span></span><span class="solic-opcao-chev">'+IC.chevR+'</span></button>'+
+      '</div>'+
+      '<button class="btn btn-fechar-full" onclick="fecharModalSolic()">Fechar</button>');
+  };
+  window.escolherAulaSolic = function(tipo){
+    var prox=proximasAulas();
+    var titulo = tipo==="cancelar" ? "Cancelar qual aula?" : "Remarcar qual aula?";
+    var fn = tipo==="cancelar" ? "solicitarCancelamento" : "solicitarRemarcacao";
+    if(!prox.length){
+      abrirModal('<div class="modal-tit">'+titulo+'</div>'+
+        '<div class="modal-sub">Você não tem aulas futuras para '+(tipo==="cancelar"?"cancelar":"remarcar")+'.</div>'+
+        '<button class="btn btn-fechar-full" onclick="novaSolicitacao()">Voltar</button>');
+      return;
+    }
+    var itens=prox.map(function(a){
+      var e=enriquecer(a);
+      return '<button class="solic-aula-item" onclick="'+fn+'(\''+a.id+'\')">'+
+        '<span class="solic-aula-ic">'+tileTreino(e.tipo)+'</span>'+
+        '<span class="solic-aula-txt"><b>'+capitalizar(diaSemanaLabel(a.data))+', '+fmtDataBR(a.data).slice(0,5)+' • '+esc(a.hora)+'</b><span>'+esc(e.titulo)+'</span></span>'+
+        '<span class="solic-aula-chev">'+IC.chevR+'</span></button>';
+    }).join("");
+    abrirModal('<div class="modal-tit">'+titulo+'</div>'+
+      '<div class="solic-aula-lista">'+itens+'</div>'+
+      '<button class="btn btn-fechar-full" onclick="novaSolicitacao()">Voltar</button>');
   };
 
   /* =========================================================================
@@ -1635,6 +1710,8 @@ import './styles.css';
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){ return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>'; }).join("");
     document.getElementById("bottomnav").innerHTML = NAV.map(function(n){ return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>'; }).join("");
     renderMHeader();
+    renderDrawer();
+    fecharMenu();
     var c=document.getElementById("content");
     c.innerHTML='<div class="screen screen-'+id+'">'+ (SCREENS[id]?SCREENS[id]():"") +'</div>';
     c.scrollTop=0;
@@ -1642,5 +1719,48 @@ import './styles.css';
     if(id==="aulas") iniciarCountdownAulas(); else pararCountdownAulas();
   };
   function renderAll(){ /* compat: entra pela ir() após login */ }
+
+  /* ===================== MENU LATERAL MOBILE (drawer) ===================== */
+  var _ndLastFocus = null;
+  function _ndFocusables(){
+    var p = document.querySelector("#nav-drawer .nd-panel");
+    if(!p) return [];
+    return Array.prototype.slice.call(p.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])'))
+      .filter(function(el){ return !el.disabled && el.offsetParent !== null; });
+  }
+  function _ndKeydown(e){
+    if(e.key === "Escape"){ e.preventDefault(); fecharMenu(); return; }
+    if(e.key !== "Tab") return;
+    var f = _ndFocusables();
+    if(!f.length) return;
+    var first = f[0], last = f[f.length-1];
+    if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
+  window.abrirMenu = function(){
+    var d = document.getElementById("nav-drawer");
+    if(!d || d.classList.contains("open")) return;
+    _ndLastFocus = document.activeElement;
+    d.classList.add("open");
+    d.setAttribute("aria-hidden","false");
+    var burger = document.querySelector(".nd-burger");
+    if(burger) burger.setAttribute("aria-expanded","true");
+    document.body.classList.add("nd-lock");
+    document.addEventListener("keydown", _ndKeydown);
+    var closeBtn = d.querySelector(".nd-close");
+    if(closeBtn) setTimeout(function(){ closeBtn.focus(); }, 60);
+  };
+  window.fecharMenu = function(){
+    var d = document.getElementById("nav-drawer");
+    if(!d || !d.classList.contains("open")) return;
+    d.classList.remove("open");
+    d.setAttribute("aria-hidden","true");
+    var burger = document.querySelector(".nd-burger");
+    if(burger) burger.setAttribute("aria-expanded","false");
+    document.body.classList.remove("nd-lock");
+    document.removeEventListener("keydown", _ndKeydown);
+    if(_ndLastFocus && _ndLastFocus.focus){ try{ _ndLastFocus.focus(); }catch(_){} }
+    _ndLastFocus = null;
+  };
 
 })();
