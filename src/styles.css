@@ -725,6 +725,42 @@ html:has(body.nd-lock){overflow:hidden;}
 .modal-box textarea:focus{border-color:var(--teal);}
 .modal-acoes{display:flex;gap:10px;margin-top:6px;}
 .modal-acoes .btn{flex:1;}
+.btn-fechar-full{width:100%;margin-top:10px;background:var(--card-soft);border:1px solid var(--card-line);color:var(--muted);}
+.btn-fechar-full:hover{color:var(--fg);}
+
+/* Modal "Ver detalhes da aula" */
+.aula-det{display:flex;flex-direction:column;background:var(--card-soft);border:1px solid var(--card-line);
+  border-radius:var(--radius-sm);margin-bottom:16px;overflow:hidden;}
+.aula-det-row{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+.aula-det-row + .aula-det-row{border-top:1px solid var(--card-line);}
+.aula-det-ic{width:20px;height:20px;flex:none;color:var(--teal);}
+.aula-det-txt{display:flex;flex-direction:column;min-width:0;}
+.aula-det-lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.aula-det-val{font-size:14.5px;color:var(--fg);font-weight:600;line-height:1.3;}
+.aula-det-faint{color:var(--faint);font-weight:500;}
+
+/* Modal "Nova solicitação": escolha de tipo e de aula */
+.solic-opcoes{display:flex;flex-direction:column;gap:10px;margin-bottom:4px;}
+.solic-opcao{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;
+  background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-sm);}
+.solic-opcao:hover{border-color:rgba(0,229,215,.35);}
+.solic-opcao-ic{width:38px;height:38px;flex:none;padding:9px;border-radius:12px;
+  background:rgba(0,229,215,.12);color:var(--teal);}
+.solic-opcao-ic-dang{background:var(--danger-bg);color:var(--danger);}
+.solic-opcao-txt{display:flex;flex-direction:column;min-width:0;flex:1;}
+.solic-opcao-txt b{font-size:14.5px;color:var(--fg);}
+.solic-opcao-txt span{font-size:12.5px;color:var(--muted);}
+.solic-opcao-chev{width:18px;height:18px;flex:none;color:var(--faint);}
+.solic-aula-lista{display:flex;flex-direction:column;gap:8px;margin-bottom:4px;max-height:48vh;overflow-y:auto;}
+.solic-aula-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 12px;
+  background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-sm);}
+.solic-aula-item:hover{border-color:rgba(0,229,215,.35);}
+.solic-aula-ic{flex:none;}
+.solic-aula-ic .treino-tile{width:42px;height:42px;padding:10px;}
+.solic-aula-txt{display:flex;flex-direction:column;min-width:0;flex:1;}
+.solic-aula-txt b{font-size:14px;color:var(--fg);}
+.solic-aula-txt span{font-size:12.5px;color:var(--muted);}
+.solic-aula-chev{width:18px;height:18px;flex:none;color:var(--faint);}
 
 /* Solicitações v2: contraproposta + WhatsApp + dica de disponibilidade */
 .solic-wrap{margin-bottom:12px;}
