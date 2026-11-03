@@ -542,18 +542,36 @@ import './styles.css';
       return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>';
     }).join("");
     renderMHeader();
+    renderDrawer();
   }
+  var NDBURGER='<button class="nd-burger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="nav-drawer" onclick="abrirMenu()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>';
   function renderMHeader(){
     var el=document.getElementById("m-header");
     if(tabAtual==="inicio"){
       el.className="m-header m-header-inicio";
       el.innerHTML='<img class="logo-img logo-img-m" src="/logo_lt360.png" alt="LT360">'+
-        '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
-        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div></div>';
+        '<div class="m-header-right"><button class="icon-btn'+(listaNotificacoes().length?' has-dot':'')+'" aria-label="Notificações" onclick="abrirNotificacoes()">'+IC.bell+'</button>'+
+        '<div class="avatar avatar-sm" onclick="ir(\'perfil\')">'+avatarInner()+'</div>'+NDBURGER+'</div>';
     } else {
       el.className="m-header m-header-titulo";
       var lbl = tabAtual==="perfil" ? "Meu perfil" : (NAV.filter(function(n){return n.id===tabAtual;})[0]||{label:""}).label;
-      el.innerHTML='<h1 class="m-title">'+lbl+'</h1>';
+      el.innerHTML='<h1 class="m-title">'+lbl+'</h1>'+NDBURGER;
+    }
+  }
+  function renderDrawer(){
+    var nav=document.getElementById("nd-nav");
+    if(nav){
+      nav.innerHTML = NAV.map(function(n){
+        return '<button class="nd-item'+(n.id===tabAtual?' active':'')+'" data-tab="'+n.id+'" onclick="ir(\''+n.id+'\')"><span class="nd-ic">'+IC[n.ic]+'</span>'+n.label+'</button>';
+      }).join("") +
+      '<button class="nd-item'+(tabAtual==="perfil"?' active':'')+'" data-tab="perfil" onclick="ir(\'perfil\')"><span class="nd-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>Meu perfil</button>';
+    }
+    var foot=document.getElementById("nd-foot");
+    if(foot){
+      foot.innerHTML =
+        '<button class="nd-user" onclick="ir(\'perfil\')"><span class="avatar avatar-sm">'+avatarInner()+'</span>'+
+          '<span class="nd-user-txt"><b>'+esc(meuNome||"Aluno")+'</b><span>'+esc(nomePersonal)+' · Personal</span></span></button>'+
+        '<button class="nd-sair" onclick="sairDaConta()">'+IC.logout+' Sair da conta</button>';
     }
   }
 
@@ -1635,6 +1653,8 @@ import './styles.css';
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){ return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>'; }).join("");
     document.getElementById("bottomnav").innerHTML = NAV.map(function(n){ return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>'; }).join("");
     renderMHeader();
+    renderDrawer();
+    fecharMenu();
     var c=document.getElementById("content");
     c.innerHTML='<div class="screen screen-'+id+'">'+ (SCREENS[id]?SCREENS[id]():"") +'</div>';
     c.scrollTop=0;
@@ -1642,5 +1662,48 @@ import './styles.css';
     if(id==="aulas") iniciarCountdownAulas(); else pararCountdownAulas();
   };
   function renderAll(){ /* compat: entra pela ir() após login */ }
+
+  /* ===================== MENU LATERAL MOBILE (drawer) ===================== */
+  var _ndLastFocus = null;
+  function _ndFocusables(){
+    var p = document.querySelector("#nav-drawer .nd-panel");
+    if(!p) return [];
+    return Array.prototype.slice.call(p.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])'))
+      .filter(function(el){ return !el.disabled && el.offsetParent !== null; });
+  }
+  function _ndKeydown(e){
+    if(e.key === "Escape"){ e.preventDefault(); fecharMenu(); return; }
+    if(e.key !== "Tab") return;
+    var f = _ndFocusables();
+    if(!f.length) return;
+    var first = f[0], last = f[f.length-1];
+    if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  }
+  window.abrirMenu = function(){
+    var d = document.getElementById("nav-drawer");
+    if(!d || d.classList.contains("open")) return;
+    _ndLastFocus = document.activeElement;
+    d.classList.add("open");
+    d.setAttribute("aria-hidden","false");
+    var burger = document.querySelector(".nd-burger");
+    if(burger) burger.setAttribute("aria-expanded","true");
+    document.body.classList.add("nd-lock");
+    document.addEventListener("keydown", _ndKeydown);
+    var closeBtn = d.querySelector(".nd-close");
+    if(closeBtn) setTimeout(function(){ closeBtn.focus(); }, 60);
+  };
+  window.fecharMenu = function(){
+    var d = document.getElementById("nav-drawer");
+    if(!d || !d.classList.contains("open")) return;
+    d.classList.remove("open");
+    d.setAttribute("aria-hidden","true");
+    var burger = document.querySelector(".nd-burger");
+    if(burger) burger.setAttribute("aria-expanded","false");
+    document.body.classList.remove("nd-lock");
+    document.removeEventListener("keydown", _ndKeydown);
+    if(_ndLastFocus && _ndLastFocus.focus){ try{ _ndLastFocus.focus(); }catch(_){} }
+    _ndLastFocus = null;
+  };
 
 })();

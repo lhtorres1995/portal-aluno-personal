@@ -430,13 +430,52 @@ body[data-tab="inicio"] .topbanner{display:block;}
 /* only-desktop helper */
 .only-desktop{display:block;}
 
+/* ===================== MENU LATERAL MOBILE (drawer) ===================== */
+.nd-burger{display:none;align-items:center;justify-content:center;width:40px;height:40px;flex:none;padding:8px;
+  border:1px solid var(--card-line);border-radius:12px;background:rgba(18,24,32,.65);color:var(--muted);backdrop-filter:blur(4px);}
+.nd-burger:hover{color:var(--fg);}
+.nav-drawer{position:fixed;inset:0;z-index:80;visibility:hidden;pointer-events:none;}
+.nav-drawer.open{visibility:visible;pointer-events:auto;}
+.nd-backdrop{position:absolute;inset:0;background:rgba(6,8,11,.55);opacity:0;transition:opacity .28s ease;}
+.nav-drawer.open .nd-backdrop{opacity:1;}
+.nd-panel{position:absolute;top:0;left:0;bottom:0;width:min(300px,82vw);display:flex;flex-direction:column;
+  background:var(--sidebar);border-right:1px solid var(--card-line);box-shadow:var(--shadow);
+  transform:translateX(-100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;
+  padding:max(16px,env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));}
+.nav-drawer.open .nd-panel{transform:translateX(0);}
+.nd-head{display:flex;align-items:center;justify-content:space-between;padding:0 2px 16px;}
+.nd-logo{height:30px;width:auto;display:block;}
+.nd-close{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:9px;
+  border:1px solid var(--card-line);border-radius:12px;background:var(--card-soft);color:var(--muted);}
+.nd-close:hover{color:var(--fg);}
+.nd-nav{display:flex;flex-direction:column;gap:5px;}
+.nd-item{display:flex;align-items:center;gap:13px;padding:12px 14px;border:none;background:none;color:var(--muted);
+  font-size:14.5px;font-weight:600;border-radius:12px;text-align:left;font-family:inherit;width:100%;}
+.nd-ic{width:21px;height:21px;flex:none;}
+.nd-item:hover{color:var(--fg);background:rgba(255,255,255,.03);}
+.nd-item.active{color:var(--teal);background:linear-gradient(90deg,rgba(0,229,215,.14),rgba(0,229,215,.04));
+  box-shadow:inset 0 0 0 1px rgba(0,229,215,.18);}
+.nd-foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--card-line);display:flex;flex-direction:column;gap:10px;}
+.nd-user{display:flex;align-items:center;gap:11px;background:none;border:none;padding:6px;border-radius:12px;text-align:left;width:100%;}
+.nd-user:hover{background:rgba(255,255,255,.03);}
+.nd-user-txt{display:flex;flex-direction:column;}
+.nd-user-txt b{font-size:14px;color:var(--fg);}
+.nd-user-txt span{font-size:12px;color:var(--muted);}
+.nd-sair{display:flex;align-items:center;gap:10px;width:100%;justify-content:center;background:var(--card-soft);
+  border:1px solid var(--card-line);color:var(--fg);font-weight:600;font-size:13.5px;padding:12px;border-radius:12px;}
+.nd-sair svg{width:18px;height:18px;flex:none;}
+.nd-sair:hover{border-color:rgba(255,255,255,.14);}
+body.nd-lock{overflow:hidden;}
+html:has(body.nd-lock){overflow:hidden;}
+
 /* =========================================================================
    MOBILE  (< 960px)
    ========================================================================= */
 @media (max-width:960px){
   .sidebar{display:none;}
   .topbar{display:none;}
-  .main{margin-left:0;padding-bottom:84px;}
+  .main{margin-left:0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));}
+  .nd-burger{display:inline-flex;}
   .content{padding:4px 18px 40px;max-width:100%;}
   .only-desktop{display:none!important;}
 
@@ -606,15 +645,9 @@ body[data-tab="inicio"] .topbanner{display:block;}
   .prox-aula-faltam{align-items:flex-start;}
   .prox-aula-dest{padding:16px;}
 
-  /* bottom nav */
-  .bottomnav{display:flex;position:fixed;left:0;right:0;bottom:0;background:#0A0D11;
-    border-top:1px solid var(--card-line);padding:8px 6px calc(8px + env(safe-area-inset-bottom,0px));z-index:50;}
-  .bn-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:var(--muted);}
-  .bn-ic{width:23px;height:23px;}
-  .bn-lb{font-size:10.5px;font-weight:600;}
-  .bn-btn.active{color:var(--teal);}
+  /* bottom nav substituída pelo menu lateral retrátil (drawer) — ver .nav-drawer */
 
-  .toast{bottom:96px;}
+  .toast{bottom:calc(22px + env(safe-area-inset-bottom,0px));}
 }
 
 /* telas muito estreitas: stat cards podem empilhar */
