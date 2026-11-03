@@ -768,13 +768,13 @@ import './styles.css';
   };
   function addDias(ds, n){ var p=ds.split("-"); var d=new Date(+p[0], +p[1]-1, +p[2]); d.setDate(d.getDate()+n); return dataLocalStr(d); }
   function aulasDoDia(ds){ return aulas.filter(function(a){ return a.data===ds && ativa(a); }).sort(ordAsc).map(enriquecer); }
-  // Card do painel "Aulas do dia" (Agenda, visão Mês): tile outline, badge de
-  // status E link "Ver detalhes" (os dois, conforme a referência aprovada).
+  // Card do painel "Aulas do dia" (Agenda, visão Mês): tile outline e badge de
+  // status. (O antigo link "Ver detalhes" foi removido por não ter função.)
   function cardAulaDetalheDia(a){
     return '<div class="agenda-dia-item">'+tileTreino(a.tipo,true)+
       '<div class="agenda-dia-info"><div class="agenda-dia-hora">'+a.hora+'</div>'+
       '<div class="agenda-dia-tit">'+a.titulo+'</div><div class="agenda-dia-sub">'+a.sub+'</div></div>'+
-      '<div class="agenda-dia-dir">'+statusBadge(a.statusLabel)+'<button type="button" class="link agenda-dia-link" onclick="toast(\'Em breve\')">Ver detalhes '+IC.chevR+'</button></div></div>';
+      '<div class="agenda-dia-dir">'+statusBadge(a.statusLabel)+'</div></div>';
   }
   function blocoDetalheDia(ds){
     var doDia = aulasDoDia(ds);
