@@ -132,6 +132,16 @@ import './styles.css';
   var minhasAvaliacoes = [];       // reais: {id,data,observacoes,aulaId,createdAt}
   var minhasAvaliacoesItens = [];  // reais: {id,avaliacaoId,metricaId,valor,unidade}
   var metricasCatalogoAluno = [];  // reais: {id,codigo,nome,categoria,unidade}
+  // Cancelamentos (plano V2, RPCs 0009/0010). Flag desligado por padrão, igual
+  // ao Portal do Personal: enquanto false ou backend indisponível, o fluxo atual
+  // de solicitação segue intacto e nada é simulado. A política (leitura) aparece
+  // quando o backend existe; o pedido via RPC/contestação só com o flag ligado.
+  var CANCELAMENTO_V2_ATIVO = true; // backend 0009–0012 aplicado e validado (2026-11-04)
+  var cancelV2Disp = false;      // definido no carregamento tolerante
+  var politicaCancel = null;     // {ativo, exige_aprovacao_aluno, faixas}
+  var meusCancelamentos = [];    // decisões de cancelamento do próprio aluno
+  var minhasContestacoes = [];
+  function cancelFluxoAtivo(){ return CANCELAMENTO_V2_ATIVO && cancelV2Disp === true; }
   var tabAtual = "inicio";
   var aulasTab = "proximas";   // sub-aba da tela Aulas
   var agendaSel = HOJE_STR;    // dia selecionado na Agenda
@@ -297,6 +307,22 @@ import './styles.css';
       var pxRes = await sb.from("profiles").select("pix_tipo, cidade").eq("id", meuProfessorId).maybeSingle();
       if(!pxRes.error && pxRes.data){ pixTipoPersonal = pxRes.data.pix_tipo||""; cidadePersonal = pxRes.data.cidade||""; }
     } catch(e){ pixTipoPersonal=""; cidadePersonal=""; }
+
+    // Política de cancelamento + decisões/contestações (tolerante: só após as
+    // migrações 0009/0010; se as tabelas não existirem, não quebra o login e o
+    // recurso fica indisponível — nunca mostramos valores/estados fictícios).
+    try {
+      var polR = await sb.from("politicas_cancelamento")
+        .select("ativo, exige_aprovacao_aluno, faixas").eq("professor_id", meuProfessorId).maybeSingle();
+      if (!polR.error){
+        cancelV2Disp = true;
+        politicaCancel = polR.data || null;
+        var cR = await sb.from("cancelamentos").select("*").eq("aluno_id", meuAlunoId).order("created_at", { ascending:false });
+        meusCancelamentos = cR.error ? [] : (cR.data||[]);
+        var ctR = await sb.from("contestacoes").select("*").eq("aluno_id", meuAlunoId).order("created_at", { ascending:false });
+        minhasContestacoes = ctR.error ? [] : (ctR.data||[]);
+      } else { cancelV2Disp = false; }
+    } catch(e){ cancelV2Disp = false; politicaCancel = null; meusCancelamentos = []; minhasContestacoes = []; }
 
     // Cobranças reais (tolerante: se a tabela/policy ainda não existir, não quebra o login).
     try {
@@ -895,6 +921,40 @@ import './styles.css';
     var msg="Olá "+((nomePersonal||"").split(" ")[0])+"! Sobre minha solicitação no portal LT360...";
     return '<a class="btn btn-wa" href="'+waLink(telefonePersonal,msg)+'" target="_blank" rel="noopener">'+IC.whats+' WhatsApp</a>';
   }
+  function cancelBRLa(v){ return "R$ " + Number(v||0).toFixed(2).replace(".", ","); }
+  // Bloco (leitura) da política do personal — some se não houver política ativa.
+  function cancelPoliticaBloco(){
+    if (!politicaCancel || !politicaCancel.ativo || !Array.isArray(politicaCancel.faixas) || !politicaCancel.faixas.length) return "";
+    var linhas = politicaCancel.faixas.map(function(f){
+      var faixa = f.ate_horas==null ? (f.de_horas+"h ou mais de antecedência")
+        : (f.de_horas+"h a menos de "+f.ate_horas+"h");
+      return '<div class="cancel-pol-linha"><span>'+esc(faixa)+'</span><b>'+Number(f.percentual)+'%</b></div>';
+    }).join("");
+    return '<div class="cancel-pol"><div class="cancel-pol-tit">Política de cancelamento do seu personal</div>'+linhas+
+      '<div class="modal-hint">O valor definitivo depende da análise do seu personal.</div></div>';
+  }
+  // Decisão do personal sobre um pedido de cancelamento (fonte de verdade = servidor).
+  function cancelDecisaoBloco(s){
+    var c=null; for(var i=0;i<meusCancelamentos.length;i++){ if(meusCancelamentos[i].solicitacao_id===s.id){ c=meusCancelamentos[i]; break; } }
+    var just = s.resposta ? '<div class="cancel-dec-linha">Justificativa: '+esc(s.resposta)+'</div>' : "";
+    if (s.status==="negada"){
+      return '<div class="cancel-dec"><div class="cancel-dec-tit">Pedido recusado</div>'+just+'</div>';
+    }
+    if (!c){
+      return '<div class="cancel-dec"><div class="cancel-dec-tit">Cancelamento aprovado</div>'+just+'</div>';
+    }
+    var fin = (c.valor_devido==null)
+      ? '<div class="cancel-dec-linha">Mensalidade fixa: sem alteração no valor contratado.</div>'
+      : ('<div class="cancel-dec-linha">Percentual aplicado: <b>'+Number(c.percentual_aplicado)+'%</b> · Valor devido: <b>'+cancelBRLa(c.valor_devido)+'</b></div>'+
+         (c.diferenca!=null ? '<div class="cancel-dec-linha">Você havia pago '+cancelBRLa(c.valor_pago_original)+'; diferença de '+cancelBRLa(c.diferenca)+
+            (c.resolucao_tipo ? (' — registrado como '+esc(c.resolucao_tipo)) : ' — a combinar com o personal')+'.</div>' : ""));
+    var ct=null; for(var j=0;j<minhasContestacoes.length;j++){ if(minhasContestacoes[j].cancelamento_id===c.id){ ct=minhasContestacoes[j]; break; } }
+    var contest = ct
+      ? '<div class="cancel-dec-linha">Contestação: '+esc(ct.status)+(ct.resposta?(' — resposta: '+esc(ct.resposta)):'')+'</div>'
+      : '<div class="cancel-dec-botoes"><button class="btn btn-dark" onclick="abrirContestacaoAluno(\''+c.id+'\')">Contestar decisão</button></div>';
+    return '<div class="cancel-dec"><div class="cancel-dec-tit">Decisão do personal</div>'+fin+just+contest+'</div>';
+  }
+
   function cardSolicitacao(s){
     var v=visualSolic(s);
     var cor=corSolicStatus(s.status);
@@ -916,6 +976,9 @@ import './styles.css';
           '<button class="btn btn-dark" onclick="responderContra(\''+s.id+'\',false)">Recusar</button>'+
           '<button class="btn btn-primary" onclick="responderContra(\''+s.id+'\',true)">Aceitar</button>'+
         '</div></div>';
+    }
+    if (cancelFluxoAtivo() && s.tipo==="cancelar" && (s.status==="aprovada"||s.status==="negada")){
+      extra += cancelDecisaoBloco(s);
     }
     return '<div class="solic-wrap">'+topo+extra+'</div>';
   }
@@ -1000,12 +1063,23 @@ import './styles.css';
   };
   window.solicitarCancelamento = function(id){
     var a=getAula(id); if(!a) return;
+    var ativo = cancelFluxoAtivo();
+    var avisoBloco = ativo
+      ? '<label class="cancel-check"><input type="checkbox" id="cxa-avisou" onchange="document.getElementById(\'cxa-aviso-box\').hidden=!this.checked"> Já avisei meu personal por outro meio</label>'+
+        '<div id="cxa-aviso-box" hidden><div class="field"><label for="cxa-canal">Como avisou</label><select id="cxa-canal"><option value="whatsapp">WhatsApp</option><option value="telefone">Telefone</option><option value="presencial">Presencialmente</option></select></div>'+
+        '<div class="field"><label for="cxa-data">Quando avisou — data</label><input id="cxa-data" type="date"></div>'+
+        '<div class="field"><label for="cxa-hora">Quando avisou — hora</label><input id="cxa-hora" type="time"></div></div>'
+      : "";
+    var onclick = ativo ? ('enviarCancelamentoV2(\''+id+'\')') : ('enviarSolicitacao(\'cancelar\',\''+id+'\')');
     abrirModal(
       '<div class="modal-tit">Pedir cancelamento</div>'+
       '<div class="modal-sub">Aula: '+capitalizar(diaSemanaLabel(a.data))+', '+fmtDataBR(a.data)+' • '+a.hora+'</div>'+
-      '<div class="field"><label for="solic-msg">Mensagem (opcional)</label><textarea id="solic-msg" placeholder="Conte o motivo, se quiser"></textarea></div>'+
+      cancelPoliticaBloco()+
+      '<div class="modal-hint">A aula continua agendada até o personal aprovar o cancelamento.</div>'+
+      '<div class="field"><label for="solic-msg">Motivo (opcional)</label><textarea id="solic-msg" placeholder="Conte o motivo, se quiser"></textarea></div>'+
+      avisoBloco+
       '<div class="modal-acoes"><button class="btn btn-dark" onclick="fecharModalSolic()">Voltar</button>'+
-      '<button class="btn btn-dang" id="solic-enviar" onclick="enviarSolicitacao(\'cancelar\',\''+id+'\')">Enviar pedido</button></div>');
+      '<button class="btn btn-dang" id="solic-enviar" onclick="'+onclick+'">Enviar pedido</button></div>');
   };
 
   window.enviarSolicitacao = async function(tipo, aulaId){
@@ -1022,6 +1096,49 @@ import './styles.css';
     if(r.data){ minhasSolicitacoes.unshift(rowToSolic(r.data)); invocarPush({ tipo:"solicitacao_aberta", solicitacao_id:r.data.id }); }
     document.getElementById("modal-overlay").hidden=true;
     toast("Solicitação enviada ao personal.");
+    ir("solicitacoes");
+  };
+
+  // Pedido de cancelamento pelo fluxo novo (RPC abrir_cancelamento). Só é usado
+  // quando cancelFluxoAtivo(); a aula NÃO é cancelada aqui — fica em análise até
+  // o personal aprovar. Servidor é a fonte de verdade.
+  window.enviarCancelamentoV2 = async function(aulaId){
+    if(!cancelFluxoAtivo()){ toast("Recurso ainda não disponível."); return; }
+    var msg=(document.getElementById("solic-msg").value||"").trim();
+    var avisou = document.getElementById("cxa-avisou") && document.getElementById("cxa-avisou").checked;
+    var canal=null, avisoEm=null;
+    if(avisou){
+      canal=document.getElementById("cxa-canal").value;
+      var d=document.getElementById("cxa-data").value, h=document.getElementById("cxa-hora").value;
+      if(d&&h) avisoEm=new Date(d+"T"+h+":00").toISOString();
+    }
+    var btn=document.getElementById("solic-enviar"); if(btn){ btn.disabled=true; btn.textContent="Enviando..."; }
+    var r=await sb.rpc("abrir_cancelamento", { p_aula_id:aulaId, p_motivo:msg||null, p_aviso_externo:!!avisou, p_aviso_canal:canal, p_aviso_em:avisoEm });
+    if(r.error){ console.error(r.error); toast("Não foi possível enviar: "+(r.error.message||"erro")); if(btn){btn.disabled=false;btn.textContent="Enviar pedido";} return; }
+    if(r.data){ minhasSolicitacoes.unshift(rowToSolic(r.data)); invocarPush({ tipo:"solicitacao_aberta", solicitacao_id:r.data.id }); }
+    document.getElementById("modal-overlay").hidden=true;
+    toast("Pedido enviado. A aula continua agendada até a análise do personal.");
+    ir("solicitacoes");
+  };
+
+  window.abrirContestacaoAluno = function(cancelId){
+    abrirModal(
+      '<div class="modal-tit">Contestar decisão</div>'+
+      '<div class="modal-sub">Sua contestação vai para o personal. A aula e os valores não mudam automaticamente.</div>'+
+      '<div class="field"><label for="cxc-motivo">Motivo</label><textarea id="cxc-motivo" placeholder="Explique por que discorda"></textarea></div>'+
+      '<div class="modal-acoes"><button class="btn btn-dark" onclick="fecharModalSolic()">Voltar</button>'+
+      '<button class="btn btn-primary" id="cxc-enviar" onclick="enviarContestacaoAluno(\''+cancelId+'\')">Enviar contestação</button></div>');
+  };
+  window.enviarContestacaoAluno = async function(cancelId){
+    if(!cancelFluxoAtivo()){ toast("Recurso ainda não disponível."); return; }
+    var motivo=(document.getElementById("cxc-motivo").value||"").trim();
+    if(!motivo){ toast("Informe o motivo da contestação."); return; }
+    var btn=document.getElementById("cxc-enviar"); if(btn){ btn.disabled=true; btn.textContent="Enviando..."; }
+    var r=await sb.rpc("abrir_contestacao", { p_cancelamento_id:cancelId, p_motivo:motivo });
+    if(r.error){ console.error(r.error); toast("Não foi possível: "+(r.error.message||"erro")); if(btn){btn.disabled=false;btn.textContent="Enviar contestação";} return; }
+    if(r.data) minhasContestacoes.unshift(r.data);
+    document.getElementById("modal-overlay").hidden=true;
+    toast("Contestação enviada ao personal.");
     ir("solicitacoes");
   };
 
@@ -1043,6 +1160,7 @@ import './styles.css';
         detRow(IC_PESSOA,"Personal",esc(nomePersonal))+
         detRow(IC.pin,"Local",localHtml)+
       '</div>'+
+      cancelPoliticaBloco()+
       '<div class="modal-acoes"><button class="btn btn-dark" onclick="solicitarRemarcacao(\''+id+'\')">Remarcar</button>'+
       '<button class="btn btn-dang" onclick="solicitarCancelamento(\''+id+'\')">Cancelar</button></div>'+
       '<button class="btn btn-fechar-full" onclick="fecharModalSolic()">Fechar</button>');
