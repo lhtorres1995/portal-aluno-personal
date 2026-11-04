@@ -873,3 +873,14 @@ html:has(body.nd-lock){overflow:hidden;}
 .notif-row-estado{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .notif-on{display:inline-flex;align-items:center;gap:6px;color:var(--green);font-weight:700;font-size:13.5px;}
 .notif-on svg{width:16px;height:16px;}
+
+/* ===== Cancelamentos (Etapa 4 — Portal do Aluno) ===== */
+.cancel-pol{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-sm);padding:10px 12px;margin:10px 0;}
+.cancel-pol-tit{font-weight:700;font-size:13.5px;margin-bottom:6px;}
+.cancel-pol-linha{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0;border-top:1px solid var(--card-line);}
+.cancel-pol-linha:first-of-type{border-top:none;}
+.cancel-check{display:flex;align-items:center;gap:8px;font-size:13.5px;margin:8px 0;}
+.cancel-dec{background:var(--card-soft);border:1px solid var(--card-line);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px;}
+.cancel-dec-tit{font-weight:700;font-size:13.5px;margin-bottom:4px;}
+.cancel-dec-linha{font-size:13px;color:var(--fg);margin-top:3px;line-height:1.45;}
+.cancel-dec-botoes{margin-top:8px;}
