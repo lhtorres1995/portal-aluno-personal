@@ -884,3 +884,10 @@ html:has(body.nd-lock){overflow:hidden;}
 .cancel-dec-tit{font-weight:700;font-size:13.5px;margin-bottom:4px;}
 .cancel-dec-linha{font-size:13px;color:var(--fg);margin-top:3px;line-height:1.45;}
 .cancel-dec-botoes{margin-top:8px;}
+
+/* Card de solicitação expansível (detalhe do cancelamento) */
+.solic-card-exp{cursor:pointer;}
+.solic-exp{display:none;}
+.solic-wrap.aberto .solic-exp{display:block;}
+.solic-wrap-exp .chev{transition:transform .18s ease;}
+.solic-wrap.aberto .chev{transform:rotate(90deg);}

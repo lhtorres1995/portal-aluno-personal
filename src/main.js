@@ -958,7 +958,10 @@ import './styles.css';
   function cardSolicitacao(s){
     var v=visualSolic(s);
     var cor=corSolicStatus(s.status);
-    var topo='<div class="solic-card">'+
+    // Cancelamento já decidido: o card vira EXPANSÍVEL — a seta abre o detalhe
+    // (decisão/percentual/valor + contestar) dentro do próprio card.
+    var temDetalhe = cancelFluxoAtivo() && s.tipo==="cancelar" && (s.status==="aprovada"||s.status==="negada");
+    var topo='<div class="solic-card'+(temDetalhe?' solic-card-exp':'')+'"'+(temDetalhe?' onclick="toggleSolicExp(\''+s.id+'\')"':'')+'>'+
       '<span class="solic-ic '+cor+'">'+IC[v.ic]+'</span>'+
       '<div class="solic-info"><div class="solic-tit">'+v.titulo+'</div>'+
       '<div class="solic-quando"><span class="dh-long">'+quandoSolic(s)+'</span><span class="dh-short">'+quandoSolic(s,true)+'</span></div>'+
@@ -977,11 +980,10 @@ import './styles.css';
           '<button class="btn btn-primary" onclick="responderContra(\''+s.id+'\',true)">Aceitar</button>'+
         '</div></div>';
     }
-    if (cancelFluxoAtivo() && s.tipo==="cancelar" && (s.status==="aprovada"||s.status==="negada")){
-      extra += cancelDecisaoBloco(s);
-    }
-    return '<div class="solic-wrap">'+topo+extra+'</div>';
+    var exp = temDetalhe ? '<div class="solic-exp">'+cancelDecisaoBloco(s)+'</div>' : '';
+    return '<div class="solic-wrap'+(temDetalhe?' solic-wrap-exp':'')+'" id="solicw-'+s.id+'">'+topo+extra+exp+'</div>';
   }
+  window.toggleSolicExp = function(id){ var el=document.getElementById("solicw-"+id); if(el) el.classList.toggle("aberto"); };
   window.setSolicTab = function(t){ solicTab=t; ir("solicitacoes"); };
   function solicNaTab(s){
     if(solicTab==="todas") return true;
