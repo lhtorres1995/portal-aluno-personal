@@ -5,8 +5,8 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 ## Arquitetura e arquivos principais
 
 - SPA em **JavaScript puro + Vite 5.4** (sem framework, sem TypeScript).
-- `index.html` — shell único (gate de login/convite, sidebar/topbar, bottom nav, modal container). Carrega apenas `/src/main.js`.
-- `src/main.js` (~1646 linhas) — toda a lógica da aplicação.
+- `index.html` — shell único (gate de login/convite, sidebar/topbar desktop, cabeçalho mobile `#m-header` com botão hambúrguer, menu lateral retrátil `#nav-drawer`, modal container). Carrega apenas `/src/main.js`.
+- `src/main.js` (~1766 linhas) — toda a lógica da aplicação.
 - **Atenção**: existe um `main.js` na **raiz** do repo (967 linhas) que é cópia antiga/morta — não é referenciado pelo `index.html` (que só carrega `/src/main.js`). Não editar o da raiz pensando que é o ativo; não remover sem confirmar com o usuário.
 - `src/styles.css` (~806 linhas), `styles.css` (raiz) — estilos.
 - `public/` — PWA: ícones, `manifest.webmanifest`, `sw.js`.
@@ -15,7 +15,8 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 
 ## Funcionalidades implementadas
 
-- Navegação: Início, Aulas (força/funcional/cardio), Agenda, Solicitações, Financeiro, Avaliação, Perfil.
+- Navegação: Início, Aulas (força/funcional/cardio), Agenda, Solicitações, Financeiro, Avaliação, Perfil. **No mobile é um menu lateral retrátil** (`#nav-drawer`, hambúrguer no `#m-header`) que substituiu a antiga bottom nav: desliza da esquerda com backdrop, destaca a aba ativa, traz logo/identificação/Sair, fecha por X/toque fora/Esc/seleção, com `aria-expanded`, focus-trap, scroll-lock e safe areas; desktop (sidebar) inalterado. Montado por `renderDrawer()`; abrir/fechar em `abrirMenu()`/`fecharMenu()`.
+- Detalhes da aula: o "Ver detalhes" dos cards de próxima aula (Início e Aulas) abre o modal `verDetalhesAula()` com tipo, data, horário, personal e local, além de ações Remarcar/Cancelar. O **local** usa `treino_local` do cadastro; na falta dele, cai para o `endereco` do aluno (campo `endereco` agora incluído no SELECT de `alunos` em `carregarMeusDados`, somente leitura).
 - Avaliação física (somente leitura — lançada pelo personal no `treinapp`): cards de destaque da última avaliação com delta neutro (nunca classifica variação como boa/ruim), gráfico único de evolução com seletor de métrica, comparativo de medidas e histórico expansível. Cabeçalho (desktop) com imagem de halteres (`public/img/halteres-avaliacao.webp`).
 - Perfil: foto (crop via `cropperjs`, RPC `definir_foto_aluno`), alteração de senha.
 - Notificações: sino com painel, Web Push (assinatura/cancelamento via `qrcode`-free VAPID flow, RPCs `salvar_push_subscription`/`remover_push_subscription`).
@@ -26,7 +27,7 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 - Hero fotográfico compartilhado via `screenHero(titulo, subtitulo, imgSrc, extraHtml)`: título + subtítulo + foto à direita no desktop (`.screen-hero`), envolvendo o conteúdo funcional que cada tela passa em `extraHtml` (abas, indicadores ou aviso) — não é só decoração, é parte do layout.
 - Fotos finais em `public/img/hero-aulas.webp`, `hero-agenda.webp`, `hero-solicitacoes.webp`, `hero-financeiro.webp` (mesmo padrão usado antes só em Avaliação física, `halteres-avaliacao.webp`).
 - No mobile, cada tela tem seu próprio hero fotográfico (reaproveita o `#topbanner` do Início), escopado via seletor `body[data-tab="<id-da-tela>"] .topbanner` dentro do media query mobile em `src/styles.css` — recorte (`background-position`), altura e degradê são ajustados por tela. Ao estender esse padrão para uma tela nova, seguir esse mesmo mecanismo em vez de criar um novo.
-- Ícones do pacote da Proposta 2 reutilizados no objeto `IC` em `src/main.js` (nav lateral/inferior, tiles de treino, indicadores, ações) — ver comentários inline antes de adicionar ícone novo, para não duplicar um que já exista.
+- Ícones do pacote da Proposta 2 reutilizados no objeto `IC` em `src/main.js` (nav lateral + menu lateral retrátil mobile, tiles de treino, indicadores, ações) — ver comentários inline antes de adicionar ícone novo, para não duplicar um que já exista. (A bottom nav mobile foi substituída pelo `#nav-drawer`; o elemento `#bottomnav` segue no DOM mas oculto por CSS.)
 
 ## Comandos de desenvolvimento
 
@@ -43,6 +44,7 @@ Parte do ecossistema LT360. Ver [`../CLAUDE.md`](../CLAUDE.md) para arquitetura 
 ## Solicitações, contrapropostas e financeiro
 
 - **Usa a tabela `solicitacoes` (fluxo ativo)** — não `solicitacoes_aluno` (não acessível ao aluno, ver `../CLAUDE.md`). Confirmar sempre contra esse nome antes de qualquer alteração de schema relacionada a solicitações.
+- **Abertura de solicitação pelo aluno**: o botão "Nova solicitação" (tela Solicitações) abre a escolha do tipo (`novaSolicitacao()` → Remarcar/Cancelar) e depois a seleção da aula futura (`escolherAulaSolic()`); os mesmos gatilhos existem no card "Próxima aula" (Início) e no modal "Ver detalhes". Tudo converge para `solicitarRemarcacao`/`solicitarCancelamento` → `enviarSolicitacao`, que faz **INSERT direto em `solicitacoes`** (tipos `remarcar`/`cancelar`; a abertura não usa RPC — a RPC `responder_contraproposta` só entra na resposta à contraproposta).
 - Contraproposta do personal é aceita/recusada pelo aluno via RPC `responder_contraproposta`, que aplica a remarcação (cria nova `aula`, marca a original como `remarcada`) só no aceite.
 - Financeiro do aluno é somente leitura (`pagamentos`, filtrado por `alunos.auth_user_id`), exceto a confirmação de pagamento via RPC `informar_pagamento` (marca `pago_informado_em`, não altera `status` diretamente).
 
