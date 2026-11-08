@@ -650,6 +650,44 @@ html:has(body.nd-lock){overflow:hidden;}
   .toast{bottom:calc(22px + env(safe-area-inset-bottom,0px));}
 }
 
+/* =====================================================================
+   Barra de navegação inferior (mobile) — layout aprovado, tema escuro.
+   4 destinos reais + "Mais" (abre o drawer). Só no celular; tablet/desktop
+   seguem com sidebar/hambúrguer.
+   ===================================================================== */
+@media (max-width:760px){
+  .bottomnav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:85;
+    align-items:stretch; gap:2px;
+    background:rgba(10,13,17,.96); backdrop-filter:blur(8px);
+    border-top:1px solid var(--card-line);
+    box-shadow:0 -4px 18px rgba(0,0,0,.4);
+    padding:6px max(6px,env(safe-area-inset-left,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(6px,env(safe-area-inset-right,0px));
+  }
+  .bn-btn{
+    flex:1; min-width:0; position:relative;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+    background:none; border:none; color:var(--muted);
+    font-size:10.5px; font-weight:600; line-height:1.1;
+    padding:8px 2px 5px; border-radius:12px; min-height:48px;
+  }
+  .bn-ic{width:23px;height:23px;flex:none;}
+  .bn-btn.active{color:var(--teal);}
+  .bn-ind{position:absolute;top:3px;left:50%;transform:translateX(-50%);width:22px;height:3px;border-radius:3px;background:transparent;transition:background .15s;}
+  .bn-btn.active .bn-ind{background:var(--teal);}
+  .bn-btn:focus-visible{outline:2px solid var(--teal);outline-offset:-3px;}
+
+  /* "Mais" assume o lugar do hambúrguer no celular */
+  .nd-burger{display:none!important;}
+  /* Enquanto o drawer está aberto (body.nd-lock), oculta a barra inferior para
+     não haver sobreposição nem conflito de navegação; volta sozinha ao fechar. */
+  body.nd-lock .bottomnav{display:none;}
+  /* conteúdo não fica sob a barra (o .main já reserva o espaço; evita padding duplo) */
+  .main{padding-bottom:calc(74px + env(safe-area-inset-bottom,0px));}
+  .content{padding-bottom:12px;}
+  .toast{bottom:calc(88px + env(safe-area-inset-bottom,0px));}
+}
+
 /* telas muito estreitas: stat cards podem empilhar */
 @media (max-width:420px){
   .stat-row{grid-template-columns:1fr 1fr;}

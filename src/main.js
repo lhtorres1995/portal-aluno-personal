@@ -524,6 +524,14 @@ import './styles.css';
     {id:"agenda",label:"Agenda",ic:"agenda"},{id:"solicitacoes",label:"Solicitações",ic:"mail"},
     {id:"financeiro",label:"Financeiro",ic:"financeiro"},{id:"avaliacao",label:"Avaliação",ic:"navAvaliacao"}
   ];
+  // Barra inferior mobile (layout aprovado): 4 destinos reais + "Mais" (abre o drawer
+  // com Solicitações, Avaliação e Perfil). Mantém o nome "Aulas" (sem módulo fictício
+  // de treinos); usa o ícone de haltere só como direção visual do mockup.
+  var BNAV = [
+    {id:"inicio",label:"Início",ic:"home"},{id:"agenda",label:"Agenda",ic:"agenda"},
+    {id:"aulas",label:"Aulas",ic:"dumbbell"},{id:"financeiro",label:"Financeiro",ic:"financeiro"}
+  ];
+  var BN_MAIS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
   var TIPO = { forca:{ic:"dumbbell",tile:"tile-graf"}, funcional:{ic:"treino",tile:"tile-teal"}, cardio:{ic:"heart",tile:"tile-vermelho"} };
 
   /* =========================================================================
@@ -1828,7 +1836,9 @@ import './styles.css';
   window.ir = function(id){
     tabAtual=id; document.body.setAttribute("data-tab",id);
     document.getElementById("sidebar-nav").innerHTML = NAV.map(function(n){ return '<button class="navitem'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="navitem-ic">'+IC[n.ic]+'</span>'+n.label+'</button>'; }).join("");
-    document.getElementById("bottomnav").innerHTML = NAV.map(function(n){ return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>'; }).join("");
+    document.getElementById("bottomnav").innerHTML =
+      BNAV.map(function(n){ return '<button class="bn-btn'+(n.id===tabAtual?' active':'')+'" onclick="ir(\''+n.id+'\')"><span class="bn-ind" aria-hidden="true"></span><span class="bn-ic">'+IC[n.ic]+'</span><span class="bn-lb">'+n.label+'</span></button>'; }).join("")
+      + '<button class="bn-btn bn-mais'+(["solicitacoes","avaliacao","perfil"].indexOf(tabAtual)>=0?' active':'')+'" aria-label="Mais opções" aria-haspopup="true" onclick="abrirMenu()"><span class="bn-ind" aria-hidden="true"></span><span class="bn-ic">'+BN_MAIS_SVG+'</span><span class="bn-lb">Mais</span></button>';
     renderMHeader();
     renderDrawer();
     fecharMenu();
