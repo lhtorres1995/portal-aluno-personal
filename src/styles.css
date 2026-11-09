@@ -516,8 +516,8 @@ html:has(body.nd-lock){overflow:hidden;}
       linear-gradient(0deg, var(--bg) 0%, var(--bg) 42%, rgba(10,13,17,.55) 68%, rgba(10,13,17,.18) 100%),
       url(/img/hero-financeiro.webp) 90% center / cover no-repeat;}
 
-  /* mobile header */
-  .m-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 6px;}
+  /* mobile header (respeita a safe-area superior do iOS: barra de status/notch) */
+  .m-header{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 16px) 18px 6px;}
   .m-header-right{display:flex;align-items:center;gap:12px;}
   .brand-m{font-size:24px;}
   .m-title{font-size:30px;font-weight:800;}
@@ -526,7 +526,7 @@ html:has(body.nd-lock){overflow:hidden;}
   body[data-tab="aulas"] .m-header,
   body[data-tab="agenda"] .m-header,
   body[data-tab="solicitacoes"] .m-header,
-  body[data-tab="financeiro"] .m-header{padding-top:30px;padding-bottom:14px;}
+  body[data-tab="financeiro"] .m-header{padding-top:calc(env(safe-area-inset-top,0px) + 30px);padding-bottom:14px;}
 
   /* hero compacto */
   .hero{margin-bottom:14px;padding:4px 2px 8px;}
